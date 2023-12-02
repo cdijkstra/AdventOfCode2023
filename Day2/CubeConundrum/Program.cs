@@ -8,8 +8,8 @@ class Program
     static void Main(string[] args)
     {
         var conundrum = new Conundrum();
-        // conundrum.Solve("dummydata1").Should().Be(8);
-        // Console.WriteLine(conundrum.Solve("data"));
+        conundrum.Solve("dummydata1").Should().Be(8);
+        Console.WriteLine(conundrum.Solve("data"));
         conundrum.Solve2("dummydata1").Should().Be(2286);
         Console.WriteLine(conundrum.Solve2("data"));
     }
