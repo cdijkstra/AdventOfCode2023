@@ -158,7 +158,6 @@ class Gear
             foreach (Match match in numberMatches)
             {
                 var leftIndex = match.Index;
-                var rightIndex = leftIndex + match.Length - 1;
                 var value = int.Parse(match.Value);
                 _numbersInfo.Add((rowIdy, leftIndex, leftIndex + match.Length - 1, value));
             }
@@ -175,13 +174,10 @@ class Gear
             foreach (var numberInfo in _numbersInfo)
             {
                 var xIndices = Enumerable.Range(numberInfo.leftX, numberInfo.rightX - numberInfo.leftX + 1).ToList();
-                if ((numberInfo.y == gearLocation.y &&
-                    xIndices.Any(xIndex => xIndex == gearLocation.x - 1
-                                           || xIndex == gearLocation.x + 1)) ||
-                    ((numberInfo.y == gearLocation.y - 1 || numberInfo.y == gearLocation.y + 1)&&
-                     xIndices.Any(xIndex => xIndex == gearLocation.x - 1
-                                            || xIndex == gearLocation.x
-                                            || xIndex == gearLocation.x + 1)))
+                if (numberInfo.y == gearLocation.y &&
+                    (xIndices.Contains(gearLocation.x - 1) || xIndices.Contains(gearLocation.x + 1)) ||
+                    (numberInfo.y == gearLocation.y - 1 || numberInfo.y == gearLocation.y + 1) &&
+                    (xIndices.Contains(gearLocation.x - 1) || xIndices.Contains(gearLocation.x) || xIndices.Contains(gearLocation.x + 1)))
                 {
                     numbersFound++;
                     numbers.Add(numberInfo.value);
