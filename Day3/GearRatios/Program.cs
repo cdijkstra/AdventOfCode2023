@@ -175,17 +175,13 @@ class Gear
             foreach (var numberInfo in _numbersInfo)
             {
                 var xIndices = Enumerable.Range(numberInfo.leftX, numberInfo.rightX - numberInfo.leftX + 1).ToList();
-                if (numberInfo.y == gearLocation.y &&
+                if ((numberInfo.y == gearLocation.y &&
                     xIndices.Any(xIndex => xIndex == gearLocation.x - 1
-                                           || xIndex == gearLocation.x + 1))
-                {
-                    numbersFound++;
-                    numbers.Add(numberInfo.value);
-                }
-                if ((numberInfo.y == gearLocation.y - 1 || numberInfo.y == gearLocation.y + 1)&&
-                    xIndices.Any(xIndex => xIndex == gearLocation.x - 1
-                                           || xIndex == gearLocation.x
-                                           || xIndex == gearLocation.x + 1))
+                                           || xIndex == gearLocation.x + 1)) ||
+                    ((numberInfo.y == gearLocation.y - 1 || numberInfo.y == gearLocation.y + 1)&&
+                     xIndices.Any(xIndex => xIndex == gearLocation.x - 1
+                                            || xIndex == gearLocation.x
+                                            || xIndex == gearLocation.x + 1)))
                 {
                     numbersFound++;
                     numbers.Add(numberInfo.value);
