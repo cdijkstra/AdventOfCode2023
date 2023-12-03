@@ -10,13 +10,17 @@ class Program
         var gear = new Gear();
         gear.Solve1("dummydata").Should().Be(4361);
         gear.Solve1("data");
+        gear.Solve2("dummydata").Should().Be(467835);
+        gear.Solve2("data");
     }
 }
 
 class Gear
 {
-    private List<string> _grid = new();
     private int _totalNumber;
+    private List<string> _grid = new();
+    private List<(int y, int leftX, int rightX, int value)> _numbersInfo = new();
+    private List<(int y, int x)> _gearLocations = new();
     public int Solve1(string fileName)
     {
         _totalNumber = 0;
@@ -132,6 +136,68 @@ class Gear
             }
         }
 
+        Console.WriteLine($"Found {_totalNumber}");
+        
+        return _totalNumber;
+    }
+    
+    public int Solve2(string fileName)
+    {
+        _totalNumber = 0;
+        _grid = new();
+        _numbersInfo = new();
+        foreach (var line in File.ReadAllLines($"Data/{fileName}"))
+        {
+            _grid.Add(line);
+        }
+
+        for (var rowIdy = 0; rowIdy < _grid.Count; rowIdy++)
+        {
+            var row = _grid[rowIdy];
+            MatchCollection numberMatches = Regex.Matches(row, @"\d+");
+            foreach (Match match in numberMatches)
+            {
+                var leftIndex = match.Index;
+                var rightIndex = leftIndex + match.Length - 1;
+                var value = int.Parse(match.Value);
+                _numbersInfo.Add((rowIdy, leftIndex, leftIndex + match.Length - 1, value));
+            }
+            foreach (Match gearMatch in Regex.Matches(row, @"\*"))
+            {
+                _gearLocations.Add((rowIdy, gearMatch.Index));
+            }
+        }
+
+        foreach (var gearLocation in _gearLocations)
+        {
+            var numbersFound = 0;
+            List<int> numbers = new();
+            foreach (var numberInfo in _numbersInfo)
+            {
+                var xIndices = Enumerable.Range(numberInfo.leftX, numberInfo.rightX - numberInfo.leftX + 1).ToList();
+                if (numberInfo.y == gearLocation.y &&
+                    xIndices.Any(xIndex => xIndex == gearLocation.x - 1
+                                           || xIndex == gearLocation.x + 1))
+                {
+                    numbersFound++;
+                    numbers.Add(numberInfo.value);
+                }
+                if ((numberInfo.y == gearLocation.y - 1 || numberInfo.y == gearLocation.y + 1)&&
+                    xIndices.Any(xIndex => xIndex == gearLocation.x - 1
+                                           || xIndex == gearLocation.x
+                                           || xIndex == gearLocation.x + 1))
+                {
+                    numbersFound++;
+                    numbers.Add(numberInfo.value);
+                }
+            }
+
+            if (numbersFound == 2)
+            {
+                _totalNumber += numbers[0] * numbers[1];
+            }
+        }
+        
         Console.WriteLine($"Found {_totalNumber}");
         
         return _totalNumber;
