@@ -30,15 +30,6 @@ class ScratchCard
         return _totalPoints;
     }
 
-    private static int DetermineNumberWinningNumbers(string line)
-    {
-        var myNumbers = Regex.Matches(line.Split(" | ")[0].Split(":")[1], @"\d+").Select(m => m.Value).ToList();
-        var winningNumbers = Regex.Matches(line.Split(" | ")[1], @"\d+").Select(m => m.Value).ToList();
-
-        var entriesFound = myNumbers.Count(num => winningNumbers.Contains(num));
-        return entriesFound;
-    }
-
     public int Solve2(string fileName)
     {
         var allCards = File.ReadAllLines($"Data/{fileName}");
@@ -56,5 +47,14 @@ class ScratchCard
 
         var totalStampCards = _copies.Sum(x => x.Value);
         return totalStampCards;
+    }
+    
+    private static int DetermineNumberWinningNumbers(string line)
+    {
+        var myNumbers = Regex.Matches(line.Split(" | ")[0].Split(":")[1], @"\d+").Select(m => m.Value).ToList();
+        var winningNumbers = Regex.Matches(line.Split(" | ")[1], @"\d+").Select(m => m.Value).ToList();
+
+        var entriesFound = myNumbers.Count(num => winningNumbers.Contains(num));
+        return entriesFound;
     }
 }
