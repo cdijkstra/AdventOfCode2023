@@ -8,8 +8,10 @@ class Program
     static void Main(string[] args)
     {
         var fertilizer = new Fertilizer();
-        fertilizer.Solve1("dummydata").Should().Be(35);
-        fertilizer.Solve1("data").Should().Be(35);
+        // fertilizer.Solve1("dummydata").Should().Be(35);
+        // Console.WriteLine($"Answer to part 1 = {fertilizer.Solve1("data")}");
+        // fertilizer.Solve2("dummydata").Should().Be(46);
+        Console.WriteLine($"Answer to part 2 = {fertilizer.Solve2("data")}");
     }
 }
 
@@ -29,12 +31,43 @@ class Fertilizer
     public Int64 Solve1(string fileName)
     {
         _content = File.ReadAllLines($"Data/{fileName}");
-        var seeds = _content
+        var seedsDictionary = _content
+            .Where(line => line.TrimStart().StartsWith(SeedsString))
+            .SelectMany(line => Regex.Matches(line, @"\d+").Select(match => Int64.Parse(match.Value)))
+            .ToDictionary(num => num);
+
+        seedsDictionary =  ResultAfterMap(seedsDictionary, SeedsToSoilMap);
+        Console.WriteLine("Moving on to SeedsToFertilizerMap");
+        seedsDictionary =  ResultAfterMap(seedsDictionary, SeedsToFertilizerMap);
+        Console.WriteLine("Moving on to FertilizerToWaterMap");
+        seedsDictionary =  ResultAfterMap(seedsDictionary, FertilizerToWaterMap);
+        Console.WriteLine("Moving on to WaterToLightMap");
+        seedsDictionary =  ResultAfterMap(seedsDictionary, WaterToLightMap);
+        Console.WriteLine("Moving on to LightToTemperatureMap");
+        seedsDictionary =  ResultAfterMap(seedsDictionary, LightToTemperatureMap);
+        Console.WriteLine("Moving on to TemperatureToHumidity");
+        seedsDictionary =  ResultAfterMap(seedsDictionary, TemperatureToHumidity);
+        Console.WriteLine("Moving on to HumidityToLocationMap");
+        seedsDictionary =  ResultAfterMap(seedsDictionary, HumidityToLocationMap);
+
+        return seedsDictionary.Min(x => x.Value);
+    }
+    
+    public Int64 Solve2(string fileName)
+    {
+        _content = File.ReadAllLines($"Data/{fileName}");
+        var seedsInfo = _content
             .Where(line => line.TrimStart().StartsWith(SeedsString))
             .SelectMany(line => Regex.Matches(line, @"\d+").Select(match => Int64.Parse(match.Value)))
             .ToList();
 
-        Dictionary<Int64, Int64> seedsDictionary = seeds.ToDictionary(num => num);
+        var seedsDictionary = seedsInfo
+            .SelectMany((value, idx) => idx % 2 == 0
+                ? Enumerable.Range((int)value, (int)seedsInfo[idx + 1]).Select(seedToAdd => (long)seedToAdd)
+                : Enumerable.Empty<long>())
+            .Distinct()
+            .ToDictionary(num => num);
+        
         seedsDictionary =  ResultAfterMap(seedsDictionary, SeedsToSoilMap);
         seedsDictionary =  ResultAfterMap(seedsDictionary, SeedsToFertilizerMap);
         seedsDictionary =  ResultAfterMap(seedsDictionary, FertilizerToWaterMap);
