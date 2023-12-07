@@ -54,7 +54,7 @@ class Game2 : IComparable<Game2>
     };
     private List<Func<char[], bool>> rules = new()
     {
-        FiveOfAKind, FourOfAKind, FullHouse, ThreeOfAKind, TwoPair, OnePair // HighCard logic handles separately
+        FiveOfAKind, FourOfAKind, FullHouse, ThreeOfAKind, TwoPair, OnePair // HighCard logic handled separately
     };
     
     public char[] Hand { get; set; }
@@ -169,7 +169,7 @@ class Game : IComparable<Game>
     private List<Func<char[], bool>> rules = new()
     {
         FiveOfAKind, FourOfAKind, FullHouse, ThreeOfAKind, TwoPair, OnePair
-        // HighCard logic handles separately
+        // HighCard logic handled separately
     };
     
     public char[] Hand { get; set; }
