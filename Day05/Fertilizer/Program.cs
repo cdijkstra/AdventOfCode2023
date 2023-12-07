@@ -94,23 +94,25 @@ class Fertilizer
                 if (considerMaps.Any())
                 {
                     var coveringMapExists = map.Any(mp =>
-                        seedMap.left >= mp.source && seedMap.right <= mp.source + mp.range
+                        seedMap.left >= mp.source && seedMap.right <= mp.source + mp.range - 1
                     );
                     if (coveringMapExists)
                     {
-                        var covermap = map.Single(mp => seedMap.left >= mp.source && seedMap.right <= mp.source + mp.range);
-                        var mappingDif = (long) covermap.dest - covermap.source;
+                        var covermap = map.Single(mp => seedMap.left >= mp.source && seedMap.right <= mp.source + mp.range - 1);
+                        var mappingDif = covermap.dest - covermap.source;
                         var updatedSeedMap = (seedMap.left + mappingDif, seedMap.right + mappingDif);
                         updatedMap.Add(updatedSeedMap);
                     }
                     // Check for partial coverage at LHS
-                    else if (map.Any(mp => seedMap.left > mp.source && seedMap.left < mp.source + mp.range))
+                    else if (map.Any(mp => seedMap.left > mp.source && seedMap.left < mp.source + mp.range - 1))
 
                     {
-                        var leftCoverMap = map.Single(mp => seedMap.left > mp.source && seedMap.left < mp.source + mp.range);
+                        // Edge case... Only right entry other mapping....
+                        
+                        var leftCoverMap = map.Single(mp => seedMap.left > mp.source && seedMap.left < mp.source + mp.range - 1);
                         var mappingDif = leftCoverMap.dest - leftCoverMap.source;
-                        var newSeedmap = (seedMap.left + mappingDif, leftCoverMap.source + leftCoverMap.range + mappingDif);
-                        var seedmapUpdatedInterval = (leftCoverMap.source + leftCoverMap.range + 1, seedMap.right);
+                        var newSeedmap = (seedMap.left + mappingDif, leftCoverMap.source + leftCoverMap.range - 1 + mappingDif);
+                        var seedmapUpdatedInterval = (leftCoverMap.source + leftCoverMap.range, seedMap.right);
                         updatedMap.Add(seedmapUpdatedInterval);
                         updatedMap.Add(newSeedmap);
                     }
@@ -122,7 +124,7 @@ class Fertilizer
                                 seedMap.left < mp.source &&
                                 seedMap.right > mp.source) == 1)
                         {
-                            var rightCoverMap = map.Single(mp => seedMap.left < mp.source && seedMap.right > mp.source);
+                            var rightCoverMap = map.Single(mp => seedMap.left < mp.source && seedMap.right >= mp.source);
                             var seedmapUpdatedInterval = (seedMap.left, rightCoverMap.source - 1);
                             var mappingDif = rightCoverMap.dest - rightCoverMap.source;
                             var newSeedmap = (rightCoverMap.source + mappingDif, seedMap.right + mappingDif);
@@ -134,14 +136,14 @@ class Fertilizer
                             Console.WriteLine("Hi");
                         }
                     }
-                    else if (map.Any(mp => seedMap.left > mp.source && seedMap.right < mp.source + mp.range))
+                    else if (map.Any(mp => seedMap.left > mp.source && seedMap.right < mp.source + mp.range - 1))
 
                     {
-                        var partialCover = map.Single(mp => seedMap.left > mp.source && seedMap.right < mp.source + mp.range);
+                        var partialCover = map.Single(mp => seedMap.left > mp.source && seedMap.right < mp.source + mp.range - 1);
                         var seedmapUpdatedIntervalLeft = (seedMap.left, partialCover.source - 1);
-                        var mappingDif = (long) partialCover.dest - partialCover.source;
-                        var newSeedmap = (partialCover.source + mappingDif, partialCover.source + partialCover.range + mappingDif);
-                        var seedmapUpdatedIntervalRight = (partialCover.source + partialCover.range + 1, seedMap.right);
+                        var mappingDif = partialCover.dest - partialCover.source;
+                        var newSeedmap = (partialCover.source + mappingDif, partialCover.source + partialCover.range - 1 + mappingDif);
+                        var seedmapUpdatedIntervalRight = (partialCover.source + partialCover.range, seedMap.right);
                         updatedMap.Add(seedmapUpdatedIntervalLeft);
                         updatedMap.Add(newSeedmap);
                         updatedMap.Add(seedmapUpdatedIntervalRight);
