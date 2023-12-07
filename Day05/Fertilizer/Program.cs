@@ -1,5 +1,5 @@
 ﻿using System.Text.RegularExpressions;
-using System.Xml.Xsl;
+using System.Collections.Generic;
 using FluentAssertions;
 
 namespace Fertilizer;
@@ -11,7 +11,7 @@ class Program
         var fertilizer = new Fertilizer();
         // fertilizer.Solve1("dummydata").Should().Be(35);
         // Console.WriteLine($"Answer to part 1 = {fertilizer.Solve1("data")}");
-        fertilizer.Solve2("dummydata").Should().Be(46);
+        // fertilizer.Solve2("dummydata").Should().Be(46);
         Console.WriteLine($"Answer to part 2 = {fertilizer.Solve2("data")}");
     }
 }
@@ -59,21 +59,38 @@ class Fertilizer
         return seedsDictionary.Min(x => x.Value);
     }
     
+    public class LongTupleComparer : IEqualityComparer<(long left, long right)>
+    {
+        public bool Equals((long left, long right) x, (long left, long right) y)
+        {
+            return x.left == y.left && x.right == y.right;
+        }
+
+        public int GetHashCode((long left, long right) obj)
+        {
+            return obj.left.GetHashCode() ^ obj.right.GetHashCode();
+        }
+    }
+    
     public Int64 Solve2(string fileName)
     {
         _content = File.ReadAllLines($"Data/{fileName}");
-        var seedRanges = _content
+
+        List<(long left, long right, long mapAddition)> seedsMap = _content
             .Where(line => line.TrimStart().StartsWith(SeedsString))
             .SelectMany(line =>
             {
                 var seedParts = Regex.Matches(line, @"\d+")
                     .Select(match => Int64.Parse(match.Value))
                     .ToList();
-                
+
                 return Enumerable.Range(0, seedParts.Count / 2)
-                    .Select(index => (left: seedParts[index * 2], right: seedParts[index * 2 + 1]));
-            })
-            .ToList();
+                    .Select(index => (
+                        left: seedParts[index * 2],
+                        right: seedParts[index * 2] + seedParts[index * 2 + 1] - 1, 
+                        mapAddition: (long)0
+                        )); 
+            }).ToList();
         
         foreach (var mapType in  new List<string>
                  {
@@ -81,29 +98,82 @@ class Fertilizer
                      TemperatureToHumidity, HumidityToLocationMap
                  })
         {
-        }
-
-        return 1;
-    }
-    
-    static List<(long left, long right)> SplitTuple((long left, long right) seedTuple, List<(long dest, long source, long range)> mappings)
-    {
-        var result = new List<(long left, long right)>();
-
-        var currentLeft = seedTuple.left;
-        var currentRight = seedTuple.right;
-
-        foreach (var mapping in mappings.OrderBy(t => t.source))
-        {
-            if (currentLeft >= mapping.dest || currentRight <= mapping.dest + mapping.range)
+            var updatedMap = new List<(long left, long right, long mapAddition)>() { };
+            foreach (var seedMap in seedsMap)
             {
-                result.Add((currentLeft, mapping.source));
+                updatedMap.Add(seedMap);
+                var map = FindMap(mapType);
+                var considerMaps = map.Where(mp =>
+                    (seedMap.left <= mp.dest + mp.range && seedMap.right >= mp.dest) ||
+                    (mp.dest <= seedMap.right && mp.dest + mp.range >= seedMap.left));
+                if (considerMaps.Any())
+                {
+                    var coveringMapExists = map.Any(mp =>
+                        seedMap.left + seedMap.mapAddition >= mp.source && seedMap.right + seedMap.mapAddition <= mp.source + mp.range
+                    );
+                    if (coveringMapExists)
+                    {
+                        var covermap = map.Single(mp => seedMap.left + seedMap.mapAddition >= mp.source && seedMap.right + seedMap.mapAddition <= mp.source + mp.range);
+                        var mappingDif = (long) covermap.dest - covermap.source;
+                        var updatedSeedMap = (seedMap.left, seedMap.right, mapAddition: seedMap.mapAddition + mappingDif);
+                        updatedMap.Remove(seedMap);
+                        updatedMap.Add(updatedSeedMap);
+                    }
+                    // Check for partial coverage at LHS
+                    else if (map.Any(mp => seedMap.left + seedMap.mapAddition > mp.source && seedMap.left + seedMap.mapAddition < mp.source + mp.range))
+
+                    {
+                        var leftCoverMap = map.Single(mp => seedMap.left + seedMap.mapAddition > mp.source && seedMap.left + seedMap.mapAddition < mp.source + mp.range);
+                        var mappingDif = (long) leftCoverMap.dest - leftCoverMap.source;
+                        var newSeedmap = (seedMap.left, leftCoverMap.source + leftCoverMap.range, mapAddition: seedMap.mapAddition + mappingDif);
+                        var seedmapUpdatedInterval = (leftCoverMap.source + leftCoverMap.range + 1, seedMap.right, mapAddition: seedMap.mapAddition);
+                        updatedMap.Remove(seedMap);
+                        updatedMap.Add(seedmapUpdatedInterval);
+                        updatedMap.Add(newSeedmap);
+                    }
+                    // Check for partial coverage at RHS
+                    else if (map.Any(mp => seedMap.left + seedMap.mapAddition < mp.source && seedMap.right + seedMap.mapAddition > mp.source))
+
+                    {
+                        if (map.Count(mp =>
+                                seedMap.left + seedMap.mapAddition < mp.source &&
+                                seedMap.right + seedMap.mapAddition > mp.source) == 1)
+                        {
+                            var rightCoverMap = map.Single(mp => seedMap.left + seedMap.mapAddition < mp.source && seedMap.right + seedMap.mapAddition > mp.source);
+                            var seedmapUpdatedInterval = (seedMap.left, rightCoverMap.source - 1, mapAddition: seedMap.mapAddition);
+                            var mappingDif = rightCoverMap.dest - rightCoverMap.source;
+                            var newSeedmap = (rightCoverMap.source, seedMap.right, mapAddition: seedMap.mapAddition + mappingDif);
+                            updatedMap.Remove(seedMap);
+                            updatedMap.Add(seedmapUpdatedInterval);
+                            updatedMap.Add(newSeedmap);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Hi");
+                        }
+                    }
+                    else if (map.Any(mp => seedMap.left + seedMap.mapAddition > mp.source && seedMap.right + seedMap.mapAddition < mp.source + mp.range))
+
+                    {
+                        var partialCover = map.Single(mp => seedMap.left + seedMap.mapAddition > mp.source && seedMap.right + seedMap.mapAddition < mp.source + mp.range);
+                        var seedmapUpdatedIntervalLeft = (seedMap.left, partialCover.source - 1, mapAddition: seedMap.mapAddition);
+                        var mappingDif = (long) partialCover.dest - partialCover.source;
+                        var newSeedmap = (partialCover.source, partialCover.source + partialCover.range, mapAddition: seedMap.mapAddition + mappingDif);
+                        var seedmapUpdatedIntervalRight = (partialCover.source + partialCover.range + 1, seedMap.right, mapAddition: seedMap.mapAddition);
+                        updatedMap.Remove(seedMap);
+                        updatedMap.Add(seedmapUpdatedIntervalLeft);
+                        updatedMap.Add(newSeedmap);
+                        updatedMap.Add(seedmapUpdatedIntervalRight);
+                    }
+                }
             }
-
-            currentLeft = Math.Max(currentLeft, mapping.source);
+            seedsMap = updatedMap;
+            Console.WriteLine();
         }
-
-        return result;
+        
+        Console.WriteLine();
+        return seedsMap.Min(result => result.left + result.mapAddition);
+        // Lower than 4476894655
     }
     
     private List<(long dest, long source, long range)> FindMap(string mapType)
