@@ -6,47 +6,36 @@ class Program
     static void Main(string[] args)
     {
         var camelCard = new CamelCards();
-        camelCard.Solve1("dummydata").Should().Be(6440);
-        Console.WriteLine(camelCard.Solve1("data"));
-        
-        camelCard.Solve2("dummydata").Should().Be(5905);
-        Console.WriteLine(camelCard.Solve2("data"));
+        camelCard.Solve<Game>("dummydata").Should().Be(6440);
+        Console.WriteLine(camelCard.Solve<Game>("data"));
+        camelCard.Solve<Game2>("dummydata").Should().Be(5905);
+        Console.WriteLine(camelCard.Solve<Game2>("data"));
     }
 }
 
 class CamelCards
 {
-    public int Solve1(string fileName)
+    public int Solve<TGame>(string fileName) where TGame : IGame, new()
     {
         string[] lines = File.ReadAllLines($"data/{fileName}");
         var sortedGames = lines.Select(line =>
         {
             var parts = line.Split();
-            return new Game { Hand = parts[0].ToCharArray(), Bid = int.Parse(parts[1]) };
+            return new TGame { Hand = parts[0].ToCharArray(), Bid = int.Parse(parts[1]) };
         }).OrderBy(game => game).ToList();
-        int totalScore = sortedGames.Select((game, index) => game.Bid * (index + 1)).Sum();
-        
-        return totalScore;
-    }
-    
-    public int Solve2(string fileName)
-    {
-        string[] lines = File.ReadAllLines($"data/{fileName}");
-        var sortedGames = lines.Select(line =>
-        {
-            var parts = line.Split();
-            return new Game2 { Hand = parts[0].ToCharArray(), Bid = int.Parse(parts[1]) };
-        }).OrderBy(game => game).ToList();
-        sortedGames.ForEach(x => Console.WriteLine(x.Hand));
-        
-        
         int totalScore = sortedGames.Select((game, index) => game.Bid * (index + 1)).Sum();
         
         return totalScore;
     }
 }
 
-class Game2 : IComparable<Game2>
+public interface IGame : IComparable<IGame>
+{
+    public char[] Hand { get; set; }
+    public int Bid { get; set; }
+}
+
+class Game2 : IGame
 { 
     private Dictionary<char, int> _pokerValues = new Dictionary<char, int>
     {
@@ -56,10 +45,10 @@ class Game2 : IComparable<Game2>
     {
         FiveOfAKind, FourOfAKind, FullHouse, ThreeOfAKind, TwoPair, OnePair // HighCard logic handled separately
     };
-    
     public char[] Hand { get; set; }
     public int Bid { get; set; }
-    public int CompareTo(Game2? other)
+    
+    public int CompareTo(IGame? other)
     {
         // Positive if myHand wins, negative if other hand wins
         foreach (var rule in rules)
@@ -80,23 +69,22 @@ class Game2 : IComparable<Game2>
         return FindWinningHandBasedOnHighestCard(Hand, other.Hand);
     }
     
-    public static bool FiveOfAKind(char[] hand)
+    private static bool FiveOfAKind(char[] hand)
     {
         var jCount = hand.Count(c => c == 'J');
         return jCount > 3 || hand.Where(c => c != 'J').GroupBy(c => c)
             .Any(group => group.Count() + jCount == 5);
     }
     
-    public static bool FourOfAKind(char[] hand)
+    private static bool FourOfAKind(char[] hand)
     {
         var jCount = hand.Count(c => c == 'J');
         // If j > 2 we always have four of a kind by adding a random card
-        var satisfied = jCount > 2 || hand.Where(c => c != 'J').GroupBy(c => c)
-            .Any(group => group.Count() + jCount == 4);
+        var satisfied = hand.Where(c => c != 'J').GroupBy(c => c).Any(group => group.Count() + jCount >= 4);
         return satisfied;
     }
     
-    public static bool FullHouse(char[] hand)
+    private static bool FullHouse(char[] hand)
     {
         var jCount = hand.Count(c => c == 'J');
         var handWithoutJ = hand.Where(c => c != 'J').ToList();
@@ -118,13 +106,13 @@ class Game2 : IComparable<Game2>
         };
     }
     
-    public static bool ThreeOfAKind(char[] hand)
+    private static bool ThreeOfAKind(char[] hand)
     {
         var jCount = hand.Count(c => c == 'J');
         return jCount > 1 || hand.Where(c => c != 'J').GroupBy(c=> c).Any(group => group.Count() + jCount >= 3);
     }
 
-    public static bool TwoPair(char[] hand)
+    private static bool TwoPair(char[] hand)
     {
         var jCount = hand.Count(c => c == 'J');
         if (jCount > 1) return true;
@@ -132,34 +120,24 @@ class Game2 : IComparable<Game2>
         return hand.GroupBy(c => c).Count(cards => cards.Count() >= 2) >= 2 - jCount;
     }
     
-    public static bool OnePair(char[] hand)
+    private static bool OnePair(char[] hand)
     {
         var jCount = hand.Count(c => c == 'J');
         return jCount > 0 || hand.Where(c => c != 'J').GroupBy(c => c).Count(cards => cards.Count() >= 2) == 1;
     }
 
-    public int FindWinningHandBasedOnHighestCard(char[] hand, char[] otherHand)
+    private int FindWinningHandBasedOnHighestCard(char[] hand, char[] otherHand)
     {
         var idx = 0;
-        var continueSearching = true;
-        
-        while (continueSearching && idx < 5)
+        while (idx < 5 && _pokerValues[hand[idx]] == _pokerValues[otherHand[idx]])
         {
-            if (_pokerValues[hand[idx]] == _pokerValues[otherHand[idx]])
-            {
-                idx++;
-            }
-            else
-            {
-                continueSearching = false;
-            }
+            idx++;
         }
-
-        return idx < 5 ?_pokerValues[hand[idx]] - _pokerValues[otherHand[idx]] : 0;
+        return idx < 5 ? _pokerValues[hand[idx]] - _pokerValues[otherHand[idx]] : 0;
     }
 }
 
-class Game : IComparable<Game>
+class Game : IGame
 { 
     private Dictionary<char, int> _pokerValues = new Dictionary<char, int>
     {
@@ -174,9 +152,10 @@ class Game : IComparable<Game>
     
     public char[] Hand { get; set; }
     public int Bid { get; set; }
-    public int CompareTo(Game? other)
+    public int CompareTo(IGame? other)
     {
         // Positive if myHand wins, negative if other hand wins
+        rules.ForEach(rule => {});
         foreach (var rule in rules)
         {
             bool ruleSatisfiedMyhand = rule(Hand);
@@ -207,10 +186,8 @@ class Game : IComparable<Game>
     
     private static bool FullHouse(char[] hand)
     {
-        return hand.GroupBy(c => c)
-                   .Count(cards => cards.Count() == 3) == 1 &&
-               hand.GroupBy(c => c)
-                   .Count(cards => cards.Count() == 2) == 1;
+        return hand.GroupBy(c => c).Count(cards => cards.Count() == 3) == 1 &&
+               hand.GroupBy(c => c).Count(cards => cards.Count() == 2) == 1;
     }
     
     private static bool ThreeOfAKind(char[] hand)
@@ -220,33 +197,21 @@ class Game : IComparable<Game>
 
     private static bool TwoPair(char[] hand)
     {
-        return hand.GroupBy(c => c)
-            .Count(cards => cards.Count() == 2) == 2;
+        return hand.GroupBy(c => c).Count(cards => cards.Count() == 2) == 2;
     }
     
     private static bool OnePair(char[] hand)
     {
-        return hand.GroupBy(c => c)
-            .Count(cards => cards.Count() == 2) == 1;
+        return hand.GroupBy(c => c).Count(cards => cards.Count() == 2) == 1;
     }
     
     private int FindWinningHandBasedOnHighestCard(char[] hand, char[] otherHand)
     {
         var idx = 0;
-        var continueSearching = true;
-        
-        while (continueSearching && idx < 5)
+        while (idx < 5 && _pokerValues[hand[idx]] == _pokerValues[otherHand[idx]])
         {
-            if (_pokerValues[hand[idx]] == _pokerValues[otherHand[idx]])
-            {
-                idx++;
-            }
-            else
-            {
-                continueSearching = false;
-            }
+            idx++;
         }
-
-        return idx < 5 ?_pokerValues[hand[idx]] - _pokerValues[otherHand[idx]] : 0;
+        return idx < 5 ? _pokerValues[hand[idx]] - _pokerValues[otherHand[idx]] : 0;
     }
 }
