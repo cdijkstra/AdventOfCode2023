@@ -1,82 +1,11 @@
 ﻿using FluentAssertions;
-
 namespace CamelCards;
-
-// The answer is not 247688577 and not 247654005 and not 247627786
 
 class Program
 {
     static void Main(string[] args)
     {
         var camelCard = new CamelCards();
-        // Lots of tests that succeed.. what is the issue?
-        Game2.FiveOfAKind(new char[] { 'J', 'J', 'A', 'A', 'A' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { '2', '2', '2', '2', '2' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { 'J', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { '8', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { '8', '8', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { 'K', 'T', 'K', 'K', 'J' }).Should().BeFalse();
-        Game2.FourOfAKind(new char[] { 'K', 'T', 'K', 'J', 'J' }).Should().BeTrue();
-        Game2.FourOfAKind(new char[] { '8', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.TwoPair(new char[] { '8', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.OnePair(new char[] { '8', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '1', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '1', '1', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '1', '1', '1', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '1', '1', '1', '1', 'J' }).Should().BeFalse();
-        Game2.FullHouse(new char[] { '1', '2', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '1', '2', '2', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '1', '2', '2', '2', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '1', '2', '2', '1', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '8', 'J', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'K', 'T', 'K', 'K', 'T' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'K', 'T', 'K', 'K', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', 'T', 'K', 'K', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', 'T', 'K', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', 'J', 'K', 'J', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', 'T', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.TwoPair(new char[] { 'K', 'T', 'K', 'K', 'J' }).Should().BeTrue();
-        Game2.OnePair(new char[] { 'K', 'T', 'K', 'K', 'J' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { 'K', 'T', 'K', 'K', 'J' }).Should().BeFalse();
-        Game2.FiveOfAKind(new char[] { '2', '2', 'J', '2', '2' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { '2', 'J', 'J', '2', '2' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { 'J', '2', 'J', 'J', 'J' }).Should().BeTrue();
-        Game2.FiveOfAKind(new char[] { 'J', '2', '2', 'J', '3' }).Should().BeFalse();
-        Game2.FourOfAKind(new char[] { '2', '2', '2', '2', '3' }).Should().BeTrue();
-        Game2.FourOfAKind(new char[] { '2', '2', '2', '3', 'J' }).Should().BeTrue();
-        Game2.FourOfAKind(new char[] { 'J', '2', '2', 'J', '3' }).Should().BeTrue();
-        Game2.FourOfAKind(new char[] { '2', 'J', 'J', '3', '3' }).Should().BeTrue();
-        Game2.FourOfAKind(new char[] { 'J', 'J', 'J', '3', '3' }).Should().BeTrue();
-        Game2.FourOfAKind(new char[] { '2', 'J', 'J', '3', '4' }).Should().BeFalse();
-        Game2.FullHouse(new char[] { '8', '5', '5', '5', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '2', '2', '2', '3', '3' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '2', '2', '2', '3', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', '2', '2', '3', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '2', '2', '2', '3', 'J' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', '2', '2', '3', '3' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '2', 'J', 'J', '3', '3' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { 'J', 'J', 'J', '3', '3' }).Should().BeTrue();
-        Game2.FullHouse(new char[] { '2', 'J', 'J', '3', '4' }).Should().BeFalse();     
-        Game2.ThreeOfAKind(new char[] { 'J', 'J', 'J', '3', '3' }).Should().BeTrue();
-        Game2.ThreeOfAKind(new char[] { '2', '2', '2', '3', '3' }).Should().BeTrue();
-        Game2.ThreeOfAKind(new char[] { '2', '2', '2', '3', 'J' }).Should().BeTrue();
-        Game2.ThreeOfAKind(new char[] { 'J', '2', '2', '3', '3' }).Should().BeTrue();
-        Game2.ThreeOfAKind(new char[] { 'J', '1', '2', '3', '3' }).Should().BeTrue();
-        Game2.ThreeOfAKind(new char[] { 'J', '1', 'J', '3', '3' }).Should().BeTrue();
-        Game2.ThreeOfAKind(new char[] { '2', 'J', '5', '3', '4' }).Should().BeFalse();
-        Game2.TwoPair(new char[] { '2', 'J', 'J', '3', '3' }).Should().BeTrue();
-        Game2.TwoPair(new char[] { '2', 'J', '2', '3', '3' }).Should().BeTrue();
-        Game2.TwoPair(new char[] { '2', 'J', 'J', '3', '2' }).Should().BeTrue();
-        Game2.TwoPair(new char[] { '2', 'J', '4', '3', '2' }).Should().BeTrue();
-        Game2.TwoPair(new char[] { '2', '3', '4', '3', '2' }).Should().BeTrue();
-        Game2.TwoPair(new char[] { '2', 'J', '1', '3', '4' }).Should().BeFalse();
-        Game2.OnePair(new char[] { '2', '1', '2', '3', '4' }).Should().BeTrue();
-        Game2.OnePair(new char[] { '2', 'J', '3', '3', '4' }).Should().BeTrue();
-        Game2.OnePair(new char[] { '2', 'J', 'J', '1', '3' }).Should().BeTrue();
-        Game2.OnePair(new char[] { 'J', 'J', 'J', '1', '2' }).Should().BeTrue();
-        Game2.OnePair(new char[] { '2', 'J', '1', '3', '4' }).Should().BeTrue();
-        Game2.OnePair(new char[] { '1', '2', '3', '5', '4' }).Should().BeFalse();
         camelCard.Solve1("dummydata").Should().Be(6440);
         Console.WriteLine(camelCard.Solve1("data"));
         
@@ -123,7 +52,6 @@ class Game2 : IComparable<Game2>
     {
         {'A', 14}, {'K', 13}, {'Q', 12}, {'T', 10}, {'9', 9}, {'8', 8}, {'7', 7}, {'6', 6}, {'5', 5}, {'4', 4}, {'3', 3}, {'2', 2}, {'J', 1}
     };
-    
     private List<Func<char[], bool>> rules = new()
     {
         FiveOfAKind, FourOfAKind, FullHouse, ThreeOfAKind, TwoPair, OnePair // HighCard logic handles separately
