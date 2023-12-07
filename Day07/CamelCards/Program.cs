@@ -90,7 +90,6 @@ class Game2 : IGame
         var handWithoutJ = hand.Where(c => c != 'J').ToList();
         return jCount switch
         {
-            // This can probably be refactored
             > 2 => true,
             // For 2 we have two options xJJyy and JJyyy
             2 => (handWithoutJ.GroupBy(c => c).Any(cards => cards.Count() == 1) &&
