@@ -1,5 +1,4 @@
 ﻿using System.Text.RegularExpressions;
-using System.Collections.Generic;
 using FluentAssertions;
 
 namespace Fertilizer;
@@ -27,6 +26,7 @@ class Fertilizer
     private const string TemperatureToHumidity = "temperature-to-humidity";
     private const string HumidityToLocationMap = "humidity-to-location";
 
+    private long _newLeft;
     private string[] _content;
     
     public Int64 Solve1(string fileName)
@@ -85,82 +85,75 @@ class Fertilizer
                  })
         {
             var updatedMap = new List<(long left, long right)>();
-            foreach (var seedMap in seedsMap)
+            foreach (var seedMap in seedsMap.OrderBy(x => x.left))
             {
-                var map = FindMap(mapType);
-                var considerMaps = map.Where(mp =>
-                    (seedMap.left <= mp.dest + mp.range && seedMap.right >= mp.dest) ||
-                    (mp.dest <= seedMap.right && mp.dest + mp.range >= seedMap.left));
+                var maps = FindMap(mapType);
+                var considerMaps = maps.Where(map => Overlaps(map, seedMap));
+                    
                 if (considerMaps.Any())
                 {
-                    var coveringMapExists = map.Any(mp =>
-                        seedMap.left >= mp.source && seedMap.right <= mp.source + mp.range - 1
-                    );
-                    if (coveringMapExists)
+                    _newLeft = seedMap.left;
+                    var considerMapsOrdered = considerMaps.OrderBy(x => x.source);
+                    foreach (var mapToApply in considerMapsOrdered)
                     {
-                        var covermap = map.Single(mp => seedMap.left >= mp.source && seedMap.right <= mp.source + mp.range - 1);
-                        var mappingDif = covermap.dest - covermap.source;
-                        var updatedSeedMap = (seedMap.left + mappingDif, seedMap.right + mappingDif);
-                        updatedMap.Add(updatedSeedMap);
-                    }
-                    // Check for partial coverage at LHS
-                    else if (map.Any(mp => seedMap.left > mp.source && seedMap.left < mp.source + mp.range - 1))
-
-                    {
-                        // Edge case... Only right entry other mapping....
-                        
-                        var leftCoverMap = map.Single(mp => seedMap.left > mp.source && seedMap.left < mp.source + mp.range - 1);
-                        var mappingDif = leftCoverMap.dest - leftCoverMap.source;
-                        var newSeedmap = (seedMap.left + mappingDif, leftCoverMap.source + leftCoverMap.range - 1 + mappingDif);
-                        var seedmapUpdatedInterval = (leftCoverMap.source + leftCoverMap.range, seedMap.right);
-                        updatedMap.Add(seedmapUpdatedInterval);
-                        updatedMap.Add(newSeedmap);
-                    }
-                    // Check for partial coverage at RHS
-                    else if (map.Any(mp => seedMap.left < mp.source && seedMap.right> mp.source))
-
-                    {
-                        if (map.Count(mp =>
-                                seedMap.left < mp.source &&
-                                seedMap.right > mp.source) == 1)
+                        // Add part form lastLeft to as far as possible to rightEntry of mapping
+                        var applyDiff = mapToApply.dest - mapToApply.source;
+                        // Full overlap
+                        if (_newLeft >= mapToApply.source && seedMap.right <= mapToApply.source + mapToApply.range - 1)
                         {
-                            var rightCoverMap = map.Single(mp => seedMap.left < mp.source && seedMap.right >= mp.source);
-                            var seedmapUpdatedInterval = (seedMap.left, rightCoverMap.source - 1);
-                            var mappingDif = rightCoverMap.dest - rightCoverMap.source;
-                            var newSeedmap = (rightCoverMap.source + mappingDif, seedMap.right + mappingDif);
-                            updatedMap.Add(seedmapUpdatedInterval);
-                            updatedMap.Add(newSeedmap);
+                            updatedMap.Add((_newLeft + applyDiff, seedMap.right + applyDiff));
+                            _newLeft = mapToApply.source + mapToApply.range;
+                        }
+                        // Partial overlap RHS
+                        else if (_newLeft < mapToApply.source && seedMap.right <= mapToApply.source + mapToApply.range - 1)
+                        {
+                            updatedMap.Add((_newLeft, mapToApply.source - 1));
+                            updatedMap.Add((mapToApply.source + applyDiff, mapToApply.source + mapToApply.range - 1 + applyDiff));
+                            _newLeft = mapToApply.source + mapToApply.range;
+                        }
+                        // Partial overlap LHS
+                        else if (_newLeft >= mapToApply.source && seedMap.right > mapToApply.source + mapToApply.range - 1)
+                        {
+                            updatedMap.Add((_newLeft + applyDiff, mapToApply.source + mapToApply.range - 1 + applyDiff));
+                            _newLeft = mapToApply.source + mapToApply.range - 1;
                         }
                         else
                         {
-                            Console.WriteLine("Hi");
+                            updatedMap.Add((_newLeft, mapToApply.source - 1));
+                            updatedMap.Add((mapToApply.source, mapToApply.source + mapToApply.range - 1));
+                            updatedMap.Add((mapToApply.source + mapToApply.range + 1, seedMap.right));
+                            _newLeft = seedMap.right + 1;
                         }
-                    }
-                    else if (map.Any(mp => seedMap.left > mp.source && seedMap.right < mp.source + mp.range - 1))
-
-                    {
-                        var partialCover = map.Single(mp => seedMap.left > mp.source && seedMap.right < mp.source + mp.range - 1);
-                        var seedmapUpdatedIntervalLeft = (seedMap.left, partialCover.source - 1);
-                        var mappingDif = partialCover.dest - partialCover.source;
-                        var newSeedmap = (partialCover.source + mappingDif, partialCover.source + partialCover.range - 1 + mappingDif);
-                        var seedmapUpdatedIntervalRight = (partialCover.source + partialCover.range, seedMap.right);
-                        updatedMap.Add(seedmapUpdatedIntervalLeft);
-                        updatedMap.Add(newSeedmap);
-                        updatedMap.Add(seedmapUpdatedIntervalRight);
                     }
                 }
                 else
                 {
                     updatedMap.Add(seedMap);
+                    _newLeft = seedMap.right + 1;
                 }
             }
+            
             seedsMap = updatedMap;
             Console.WriteLine();
         }
         
         Console.WriteLine();
-        return seedsMap.Min(result => result.left);
+        return seedsMap.Where(x => x.left != 0).Min(result => result.left);
         // Lower than 4476894655
+        // Higher than 6683080
+    }
+    
+    static bool Overlaps((long destination, long source, long range) map, (long left, long right) seedmap)
+    {
+        var mapStart = map.source;
+        var mapEnd = map.source + map.range;
+        var seedmapStart = seedmap.left;
+        var seedmapEnd = seedmap.right;
+
+        // Check for overlap
+        return (mapStart >= seedmapStart && mapStart <= seedmapEnd) || // start of map is within seed range
+               (mapEnd >= seedmapStart && mapEnd <= seedmapEnd) ||     // end of map is within seed range
+               (mapStart <= seedmapStart && mapEnd >= seedmapEnd);      // map fully contains seed range
     }
     
     private List<(long dest, long source, long range)> FindMap(string mapType)
