@@ -8,8 +8,8 @@ class Program
     static void Main(string[] args)
     {
         var wasteLand = new Wasteland();
-        // wasteLand.Solve1("dummydata").Should().Be(2);
-        // Console.WriteLine(wasteLand.Solve1("data"));
+        wasteLand.Solve1("dummydata").Should().Be(2);
+        Console.WriteLine(wasteLand.Solve1("data"));
         wasteLand.Solve2("dummydata2").Should().Be(6);
         Console.WriteLine(wasteLand.Solve2("data"));
     }
@@ -128,7 +128,7 @@ class Wasteland
     {
         return Math.Abs(a * b) / FindGCD(a, b);
     }
-
+    
     static long FindGCD(long a, long b)
     {
         while (b != 0)
