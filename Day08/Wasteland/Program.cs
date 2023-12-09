@@ -81,29 +81,73 @@ class Wasteland
         Initialize(fileName);
         
         bool allEndingOnLetterZ = false;
-        var currentNetworks = _networks.Where(nw => nw.Origin.EndsWith("A")).ToList();
+        var considerNetworks = _networks.Where(nw => nw.Origin.EndsWith("A")).ToList();
+        var firstNetwork = considerNetworks.First();
+        
+        List<long> indicesToConsider = new();
         long idx = 0;
+        long startIdx = 0;
+        
         while (!allEndingOnLetterZ)
         {
-            var direction = (Direction) Enum.Parse(typeof(Direction), _choices[idx % _choices.Length].ToString());
-            var leftOrRightIndex = direction switch
+            // Find 100 matching numbers for the first network
+            var totalIndicesToConsider = 2;
+            while (indicesToConsider.Count < totalIndicesToConsider + 1)
             {
-                Direction.L => 0,
-                Direction.R => 1,
-                _ => throw new Exception("Unknown instruction")
-            };
-            
-            currentNetworks = currentNetworks
-                .Select(network => _networks.Single(nw => nw.Origin == network.Destinations[leftOrRightIndex]))
-                .ToList();
-            
-            allEndingOnLetterZ = currentNetworks.All(nw => nw.Origin.EndsWith("Z"));
-            if (!allEndingOnLetterZ)
-            {
+                var direction = (Direction) Enum.Parse(typeof(Direction), _choices[idx % _choices.Length].ToString());
+                firstNetwork = direction switch
+                {
+                    Direction.L => _networks.Single(nw => nw.Origin == firstNetwork.Destinations[0]),
+                    Direction.R => _networks.Single(nw => nw.Origin == firstNetwork.Destinations[1]),
+                    _ => throw new Exception("Unknown instruction")
+                };
+                
                 idx++;
+                if (firstNetwork.Origin.EndsWith("Z")) indicesToConsider.Add(idx);
+            }
+
+            // Check for second network if they end with Z as well for those indices.
+            // Update indicesToConsider (remove ones not matching for network 2)
+            // Then check for network 3, update indices and check for network 4
+            var networkIndex = 1;
+            var newStartIdx = indicesToConsider.Max();
+            while (networkIndex < considerNetworks.Count && indicesToConsider.Any())
+            {
+                var currentNetwork = considerNetworks[networkIndex];
+                List<long> remainingIndicesToConsider = new();
+                for (var currentIdx = startIdx; currentIdx < indicesToConsider.Max(); currentIdx++)
+                {
+                    Direction direction = (Direction)Enum.Parse(typeof(Direction), _choices[currentIdx % _choices.Length].ToString());
+                    currentNetwork = direction switch
+                    {
+                        Direction.L => _networks.Single(nw => nw.Origin == currentNetwork.Destinations[0]),
+                        Direction.R => _networks.Single(nw => nw.Origin == currentNetwork.Destinations[1]),
+                        _ => throw new Exception("Unknown instruction")
+                    };
+
+                    if (startIdx == indicesToConsider.Max())
+                    {
+                        
+                    }
+                    
+                    if (indicesToConsider.Contains(currentIdx + 1) && currentNetwork.Origin.EndsWith("Z"))
+                    {
+                        remainingIndicesToConsider.Add(currentIdx + 1);
+                    }
+                }
+
+                indicesToConsider = remainingIndicesToConsider;
+                networkIndex++; // Break out when still remaining index and networkIndex = _networks.Count
+            }
+
+            startIdx = newStartIdx;
+
+            if (indicesToConsider.Any())
+            {
+                allEndingOnLetterZ = true;
             }
         }
-        
-        return idx + 1;
+
+        return indicesToConsider.Min();
     }
 }

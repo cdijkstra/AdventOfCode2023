@@ -85,45 +85,33 @@ class Fertilizer
                  })
         {
             var updatedMap = new List<(long left, long right)>();
+            // Loop over all seedMaps using intervals 
             foreach (var seedMap in seedsMap.OrderBy(x => x.left))
             {
                 var maps = FindMap(mapType);
                 var considerMaps = maps.Where(map => Overlaps(map, seedMap));
-                    
+                // If maps should apply, do so. Otherwise add the seedmap unchanged in else statement
                 if (considerMaps.Any())
                 {
                     _newLeft = seedMap.left;
                     var considerMapsOrdered = considerMaps.OrderBy(x => x.source);
                     foreach (var mapToApply in considerMapsOrdered)
                     {
-                        // Add part form lastLeft to as far as possible to rightEntry of mapping
+                        // The maps are sorted. We should check if there's an interval from _newleft to source
                         var applyDiff = mapToApply.dest - mapToApply.source;
-                        // Full overlap
-                        if (_newLeft >= mapToApply.source && seedMap.right <= mapToApply.source + mapToApply.range - 1)
-                        {
-                            updatedMap.Add((_newLeft + applyDiff, seedMap.right + applyDiff));
-                            _newLeft = mapToApply.source + mapToApply.range;
-                        }
-                        // Partial overlap RHS
-                        else if (_newLeft < mapToApply.source && seedMap.right <= mapToApply.source + mapToApply.range - 1)
+                        if (_newLeft < mapToApply.source)
                         {
                             updatedMap.Add((_newLeft, mapToApply.source - 1));
-                            updatedMap.Add((mapToApply.source + applyDiff, mapToApply.source + mapToApply.range - 1 + applyDiff));
-                            _newLeft = mapToApply.source + mapToApply.range;
+                            _newLeft = mapToApply.source;
                         }
-                        // Partial overlap LHS
-                        else if (_newLeft >= mapToApply.source && seedMap.right > mapToApply.source + mapToApply.range - 1)
-                        {
-                            updatedMap.Add((_newLeft + applyDiff, mapToApply.source + mapToApply.range - 1 + applyDiff));
-                            _newLeft = mapToApply.source + mapToApply.range - 1;
-                        }
-                        else
-                        {
-                            updatedMap.Add((_newLeft, mapToApply.source - 1));
-                            updatedMap.Add((mapToApply.source, mapToApply.source + mapToApply.range - 1));
-                            updatedMap.Add((mapToApply.source + mapToApply.range + 1, seedMap.right));
-                            _newLeft = seedMap.right + 1;
-                        }
+
+                        // We should check if the right interval of the map is within or outside the range of the seeds
+                        var applyMapUntil = seedMap.right < mapToApply.source + mapToApply.range
+                            ? seedMap.right
+                            : mapToApply.source + mapToApply.range - 1;
+                        
+                        updatedMap.Add((_newLeft + applyDiff, applyMapUntil + applyDiff));
+                        _newLeft = applyMapUntil + 1;
                     }
                 }
                 else
@@ -131,16 +119,18 @@ class Fertilizer
                     updatedMap.Add(seedMap);
                     _newLeft = seedMap.right + 1;
                 }
+
+                // Maybe we missed a part at the right side
+                if (_newLeft < seedMap.right + 1)
+                {
+                    updatedMap.Add((_newLeft, seedMap.right));
+                }
             }
             
             seedsMap = updatedMap;
-            Console.WriteLine();
         }
         
-        Console.WriteLine();
         return seedsMap.Where(x => x.left != 0).Min(result => result.left);
-        // Lower than 4476894655
-        // Higher than 6683080
     }
     
     static bool Overlaps((long destination, long source, long range) map, (long left, long right) seedmap)
