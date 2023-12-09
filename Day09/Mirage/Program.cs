@@ -18,16 +18,26 @@ class Mirage
     private int _result;
     public int Solve1(string fileName)
     {
-        _result = 0;
-        foreach (var line in File.ReadAllLines($"Data/{fileName}"))
-        {
-            var derivatives = FindDerivativesEqualToZero(line);
-
-            // Now do the math. We just have to sum over the last entries of the sequences
-            _result += derivatives.Sum(row => row.Last());
-        }
-
-        return _result;
+        return File.ReadAllLines($"Data/{fileName}")
+            .Select(line => FindDerivativesEqualToZero(line))
+            .SelectMany(derivatives => derivatives.Select(row => row.Last()))
+            .Sum();
+    }
+    
+    public int Solve2(string fileName)
+    {
+        return File.ReadAllLines($"Data/{fileName}")
+            .Select(line => FindDerivativesEqualToZero(line))
+            .Select(derivatives =>
+            {
+                int leftNumber = 0;
+                // Now do the math. We can obtain the missing number by working backwards with derivatives
+                // calculatedNumber starts at 0 and we have to go in reverse over rows updating calculcatedNumber = firstEntry - calculcatedNumber
+                return derivatives
+                    .Reverse<List<int>>()
+                    .Select(row => row.First() - leftNumber)
+                    .Aggregate((acc, val) => leftNumber = val);
+            }).Sum();
     }
 
     private static List<List<int>> FindDerivativesEqualToZero(string line)
@@ -46,23 +56,5 @@ class Mirage
         }
 
         return derivatives;
-    }
-
-    public int Solve2(string fileName)
-    {
-        _result = 0;
-        foreach (var line in File.ReadAllLines($"Data/{fileName}"))
-        {
-            var derivatives = FindDerivativesEqualToZero(line);
-            
-            // Now do the math. We can obtain the missing number by working backwards with derivatives
-            // calculatedNumber starts at 0 and we have to go in reverse over rows updating calculcatedNumber = firstEntry - calculcatedNumber
-            int leftNumber = 0;
-            _result += derivatives
-                .Reverse<List<int>>()
-                .Select(row => row.First() - leftNumber)
-                .Aggregate((acc, val) => leftNumber = val);
-        }
-        return _result;
     }
 }
