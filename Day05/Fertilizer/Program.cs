@@ -8,8 +8,8 @@ class Program
     static void Main(string[] args)
     {
         var fertilizer = new Fertilizer();
-        // fertilizer.Solve1("dummydata").Should().Be(35);
-        // Console.WriteLine($"Answer to part 1 = {fertilizer.Solve1("data")}");
+        fertilizer.Solve1("dummydata").Should().Be(35);
+        Console.WriteLine($"Answer to part 1 = {fertilizer.Solve1("data")}");
         fertilizer.Solve2("dummydata").Should().Be(46);
         Console.WriteLine($"Answer to part 2 = {fertilizer.Solve2("data")}");
     }
@@ -37,10 +37,15 @@ class Fertilizer
             .SelectMany(line => Regex.Matches(line, @"\d+").Select(match => Int64.Parse(match.Value)))
             .ToDictionary(num => num);
         
-        foreach (var mapType in  new List<string>
+        foreach (var mapType in new List<string>
                  {
-                     SeedsToSoilMap, SoilToFertilizerMap, FertilizerToWaterMap, WaterToLightMap, LightToTemperatureMap,
-                     TemperatureToHumidity, HumidityToLocationMap
+                     SeedsToSoilMap,
+                     SoilToFertilizerMap,
+                     FertilizerToWaterMap,
+                     WaterToLightMap,
+                     LightToTemperatureMap,
+                     TemperatureToHumidity,
+                     HumidityToLocationMap
                  })
         {
             var map = FindMap(mapType);
@@ -50,7 +55,6 @@ class Fertilizer
                 {
                     var destinationRange = map.First(tuple => seed.Value >= tuple.source && seed.Value <= tuple.source + tuple.range);
                     var offset = seed.Value - destinationRange.source;
-
                     seedsDictionary[seed.Key] = destinationRange.dest + offset;
                 }
             }
@@ -68,8 +72,7 @@ class Fertilizer
             .SelectMany(line =>
             {
                 var seedParts = Regex.Matches(line, @"\d+")
-                    .Select(match => Int64.Parse(match.Value))
-                    .ToList();
+                    .Select(match => Int64.Parse(match.Value)).ToList();
 
                 return Enumerable.Range(0, seedParts.Count / 2)
                     .Select(index => (
@@ -78,52 +81,32 @@ class Fertilizer
                         )); 
             }).ToList();
         
-        foreach (var mapType in  new List<string>
-                 {
-                     SeedsToSoilMap, SoilToFertilizerMap, FertilizerToWaterMap, WaterToLightMap, LightToTemperatureMap,
-                     TemperatureToHumidity, HumidityToLocationMap
-                 })
+        foreach (var mapType in new List<string>
+             {
+                 SeedsToSoilMap,
+                 SoilToFertilizerMap,
+                 FertilizerToWaterMap,
+                 WaterToLightMap,
+                 LightToTemperatureMap,
+                 TemperatureToHumidity,
+                 HumidityToLocationMap
+             })
         {
             var updatedMap = new List<(long left, long right)>();
             // Loop over all seedMaps using intervals 
             foreach (var seedMap in seedsMap.OrderBy(x => x.left))
             {
                 var maps = FindMap(mapType);
-                var considerMaps = maps.Where(map => Overlaps(map, seedMap));
+                var considerMaps = maps.Where(map => Overlaps(map, seedMap)).ToList();
                 // If maps should apply, do so. Otherwise add the seedmap unchanged in else statement
                 if (considerMaps.Any())
                 {
-                    _newLeft = seedMap.left;
-                    var considerMapsOrdered = considerMaps.OrderBy(x => x.source);
-                    foreach (var mapToApply in considerMapsOrdered)
-                    {
-                        // The maps are sorted. We should check if there's an interval from _newleft to source
-                        var applyDiff = mapToApply.dest - mapToApply.source;
-                        if (_newLeft < mapToApply.source)
-                        {
-                            updatedMap.Add((_newLeft, mapToApply.source - 1));
-                            _newLeft = mapToApply.source;
-                        }
-
-                        // We should check if the right interval of the map is within or outside the range of the seeds
-                        var applyMapUntil = seedMap.right < mapToApply.source + mapToApply.range
-                            ? seedMap.right
-                            : mapToApply.source + mapToApply.range - 1;
-                        
-                        updatedMap.Add((_newLeft + applyDiff, applyMapUntil + applyDiff));
-                        _newLeft = applyMapUntil + 1;
-                    }
+                    ApplyMaps(seedMap, considerMaps, updatedMap);
                 }
                 else
                 {
                     updatedMap.Add(seedMap);
                     _newLeft = seedMap.right + 1;
-                }
-
-                // Maybe we missed a part at the right side
-                if (_newLeft < seedMap.right + 1)
-                {
-                    updatedMap.Add((_newLeft, seedMap.right));
                 }
             }
             
@@ -132,7 +115,37 @@ class Fertilizer
         
         return seedsMap.Where(x => x.left != 0).Min(result => result.left);
     }
-    
+
+    private void ApplyMaps((long left, long right) seedMap, IEnumerable<(long dest, long source, long range)> considerMaps, List<(long left, long right)> updatedMap)
+    {
+        _newLeft = seedMap.left;
+        var considerMapsOrdered = considerMaps.OrderBy(x => x.source);
+        foreach (var mapToApply in considerMapsOrdered)
+        {
+            // The maps are sorted. We should check if there's an interval from _newleft to source
+            var applyDiff = mapToApply.dest - mapToApply.source;
+            if (_newLeft < mapToApply.source)
+            {
+                updatedMap.Add((_newLeft, mapToApply.source - 1));
+                _newLeft = mapToApply.source;
+            }
+
+            // We should check if the right interval of the map is within or outside the range of the seeds
+            var applyMapUntil = seedMap.right < mapToApply.source + mapToApply.range
+                ? seedMap.right
+                : mapToApply.source + mapToApply.range - 1;
+
+            updatedMap.Add((_newLeft + applyDiff, applyMapUntil + applyDiff));
+            _newLeft = applyMapUntil + 1;
+        }
+        
+        // Maybe we missed a part at the right side
+        if (_newLeft < seedMap.right + 1)
+        {
+            updatedMap.Add((_newLeft, seedMap.right));
+        }
+    }
+
     static bool Overlaps((long destination, long source, long range) map, (long left, long right) seedmap)
     {
         var mapStart = map.source;
