@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System.Text.RegularExpressions;
+using FluentAssertions;
 
 namespace PipeMaze;
 
@@ -9,8 +10,8 @@ class Program
         var maze = new Maze();
         maze.Solve1("dummydata1").Should().Be(4);
         Console.WriteLine(maze.Solve1("data"));
-        // maze.Solve2("dummydata1").Should().Be(1);
-        // maze.Solve2("dummydata3").Should().Be(8);
+        maze.Solve2("dummydata1").Should().Be(1);
+        maze.Solve2("dummydata3").Should().Be(8);
         Console.WriteLine($"Answer = {maze.Solve2("data")}");
     }
 }
@@ -162,32 +163,52 @@ class Maze
         // Create subgrid and apply Flooding algorithm
 
         var padding = 1;
-        _subGrid = Enumerable.Range(0, maxRow - minRow + 1 + 2 * padding)
-            .Select(rowIndex =>
-                Enumerable.Range(0, maxCol - minCol + 1 + 2 * padding)
-                    .Select(colIndex =>
-                        (rowIndex < padding || rowIndex >= _grid.Count + padding || colIndex < padding || colIndex >= _grid[rowIndex - padding].Count + padding)
-                            ? '.'  // Padding with '.' for entries outside the original grid
-                            : _grid[rowIndex - padding][colIndex - padding]
-                    ).ToList()
-            ).ToList();
-        
-        foreach (var row in _subGrid)
-        {
-            row.ForEach(x => Console.Write(x));
-            Console.WriteLine();
-        }
-        
-        // Update possiblePipeCoordinates
-        var updatedPipeCoordinates = pipeCoordinates
-            .Select(coord => (rowIndex: coord.rowIndex + padding, colIndex: coord.colIndex + padding))
+        List<List<char>> subGrid = _grid
+            .Skip(minRow)
+            .Take(maxRow - minRow + 1)
+            .Select(row => row.Skip(minCol).Take(maxCol - minCol + 1).ToList())
             .ToList();
         
+        subGrid.Insert(0, new List<char>(Enumerable.Repeat('.', subGrid[0].Count)));
+        subGrid.Add(new List<char>(Enumerable.Repeat('.', subGrid[0].Count)));
+        subGrid.ForEach(row =>
+        {
+            row.Insert(0, '.');
+            row.Add('.');
+        });
+        
+        _subGrid = subGrid;
         // Now apply flooding algorithm
         (int rowIndex, int colIndex) coordinates = (0, 0);
         FloodCoordinateRecursively(coordinates.rowIndex, coordinates.colIndex);
 
+        // Now check which ones are locked inside as well from the remaining '.' entries
+        List<(int rowIndex, int colIndex)> modifyEntries = new();
+        for (var rowIndex = 0; rowIndex < _subGrid.Count; rowIndex++)
+        {
+            var row = _subGrid[rowIndex];
+            foreach (var (character, index) in row.Select((c, i) => (c, i)))
+            {
+                if (character != '.') continue;
+                var pipeCrossings = 0;
+                // Use LINQ to get the List<char> from the index to the last entry in the row
+                string substring = string.Join("", row.Skip(index).ToList());
+                pipeCrossings += substring.Count(c => c == '|');
+                // Your logic for processing the substring goes here
+                var comp1 = Regex.Matches(substring, @"F-*J").Count;
+                var comp2 = Regex.Matches(substring, @"L-*7").Count;
+                pipeCrossings += comp1 + comp2;
+                // For example, print the characters in the substring
+                if (pipeCrossings % 2 == 0 && pipeCrossings > 0)
+                {
+                    modifyEntries.Add((rowIndex, index));
+                }
+            }
+        }
+        modifyEntries.ForEach(coordinates => _subGrid[coordinates.rowIndex][coordinates.colIndex] = '0');
         var countLockedEntries = _subGrid.Sum(row => row.Count(entry => entry == '.'));
+
+        Console.WriteLine();
 
         foreach (var row in _subGrid)
         {
@@ -204,11 +225,13 @@ class Maze
         {
             return;
         }
-
+        
         _subGrid[rowIndex][colIndex] = '0';
         var newCoordinates = FindAdjacentIndicesIncludingDiagonal(rowIndex, colIndex);
-        var newCoordinatesToFlood = newCoordinates.Where(indices => _subGrid[indices.rowIndex][indices.colIndex] == '.').ToList();
-        newCoordinatesToFlood.ForEach(coordinates => FloodCoordinateRecursively(coordinates.rowIndex, coordinates.colIndex));
+        var newCoordinatesToFlood =
+            newCoordinates.Where(indices => _subGrid[indices.rowIndex][indices.colIndex] == '.').ToList();
+        newCoordinatesToFlood.ForEach(coordinates =>
+            FloodCoordinateRecursively(coordinates.rowIndex, coordinates.colIndex));
     }
     
     private List<(int rowIndex, int colIndex)> FindAdjacentIndicesIncludingDiagonal(int rowIndex, int colIndex)
