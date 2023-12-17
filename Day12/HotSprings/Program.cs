@@ -10,6 +10,8 @@ class Program
         var hotSprings = new HotSprings();
         hotSprings.Solve1("dummydata").Should().Be(21);
         Console.WriteLine(hotSprings.Solve1("data"));
+        hotSprings.Solve2("dummydata").Should().Be(525152);
+
     }
 }
 
@@ -28,6 +30,23 @@ class HotSprings()
             var instructions = entry.Split()[1].Split(",").Select(int.Parse).ToList();
             var regex = BuildRegexPattern(instructions);
             totalCombis += CheckCombinations(sequence, 0, regex);
+        }
+
+        return totalCombis;
+    }
+    
+    public int Solve2(string fileName)
+    {
+        var totalCombis = 0;
+        foreach (var entry in File.ReadAllLines($"Data/{fileName}"))
+        {
+            var sequence = string.Join("?", Enumerable.Repeat(entry.Split()[0], 3));
+            var instructions = entry.Split()[1].Split(",").Select(int.Parse).ToList();
+            var mergedInstructions = string.Join(",", Enumerable.Repeat(instructions, 3).SelectMany(x => x)).Split(",").Select(int.Parse).ToList();
+
+            var regex = BuildRegexPattern(mergedInstructions);
+            var totalcoms = CheckCombinations(sequence, 0, regex);
+            totalCombis += totalcoms;
         }
 
         return totalCombis;
