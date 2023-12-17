@@ -9,6 +9,8 @@ class Program
         var lava = new Lava();
         lava.Solve1("dummydata").Should().Be(46);
         Console.WriteLine(lava.Solve1("data"));
+        lava.Solve2("dummydata").Should().Be(51);
+        Console.WriteLine(lava.Solve2("data"));
     }
 }
 
@@ -35,6 +37,46 @@ class Lava
     };
     public int Solve1(string fileName)
     {
+        Initialize(fileName);
+        // Determine start position and direction
+        (int row, int col) startIndex = (0, 0);
+        var startDirection = Direction.E;
+        
+        // Fill in beams recursively
+        CalculateBeamRecursively(startIndex, startDirection);
+        return _energizedGrid.SelectMany(row => row).Count(cell => cell == '#');
+    }
+    
+    public int Solve2(string fileName)
+    {
+        var validDirections = Enum.GetValues(typeof(Direction)).Cast<Direction>().Where(d => d != Direction.Unknown).ToList();
+        List<int> listEnergizedEntries = new();
+        Initialize(fileName);
+        
+        foreach (var startRow in Enumerable.Range(0, _grid.Count))
+        {
+            foreach (var startCol in Enumerable.Range(0, _grid[0].Count))
+            {
+                foreach (Direction startDirection in validDirections)
+                {
+                    Initialize(fileName);
+                    (int row, int col) startIndex = (startRow, startCol);
+                    CalculateBeamRecursively(startIndex, startDirection);
+                    var energizedEntries = _energizedGrid.SelectMany(row => row).Count(cell => cell == '#');
+                    listEnergizedEntries.Add(energizedEntries);
+                }
+            }
+        }
+
+        var totalEntries = _grid.Count * _grid[0].Count * 4;
+        Console.WriteLine($"Expected {totalEntries} entries and found {listEnergizedEntries.Count}");
+        // var higherEntries = listEnergizedEntries.Where(val => val > 6978).OrderBy(x => x).ToList();
+        // higherEntries.ForEach(x => Console.WriteLine(x));
+        return listEnergizedEntries.Max();
+    }
+
+    private void Initialize(string fileName)
+    {
         _grid = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToList())
             .ToList();
@@ -47,27 +89,12 @@ class Lava
         _energizedGrid = Enumerable.Range(0, rows)
             .Select(_ => Enumerable.Repeat('.', cols).ToList())
             .ToList();
-        
+
         _directionGrid = Enumerable.Range(0, rows)
             .Select(_ => Enumerable.Range(0, cols)
                 .Select(__ => new List<Direction> { Direction.Unknown })
                 .ToList())
             .ToList();
-        
-        // Determine start position and direction
-        (int row, int col) startIndex = (0, 0);
-        var startDirection = Direction.E;
-        
-        // Fill in beams recursively
-        CalculateBeamRecursively(startIndex, startDirection);
-
-        foreach (var row in _energizedGrid)
-        {
-            row.ForEach(x => Console.Write(x));
-            Console.WriteLine();
-        }
-        
-        return _energizedGrid.SelectMany(row => row).Count(cell => cell == '#');
     }
 
     private void CalculateBeamRecursively((int row, int col) index, Direction direction)
