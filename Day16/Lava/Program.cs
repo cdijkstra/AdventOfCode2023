@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-
 namespace Lava;
 
 class Program
@@ -99,12 +98,14 @@ class Lava
 
     private void CalculateBeamRecursively((int row, int col) index, Direction direction)
     {
+        // Check index, is it within grid?
         if (index.row < 0 || index.row >= _grid.Count ||
             index.col < 0 || index.col >= _grid[0].Count)
         {
             return;
         }
 
+        // Check if position has not been visited before with same Direction
         if (!_directionGrid[index.row][index.col].Contains(direction))
         {
             _directionGrid[index.row][index.col].Add(direction);
@@ -114,10 +115,13 @@ class Lava
             return;
         }
         
-        var entry = _grid[index.row][index.col];
+        // Retrieve currentChar and set energizedgrid entry
+        var currentChar = _grid[index.row][index.col];
         _energizedGrid[index.row][index.col] = '#';
-        if (entry == '.')
+        
+        if (currentChar == '.')
         {
+            // Continue in same direction
             switch (direction)
             {
                 case Direction.E:
@@ -134,41 +138,45 @@ class Lava
                     break;
             }
         }
-        else if (_mirrors.Contains(entry))
+        else if (_mirrors.Contains(currentChar))
         {
+            // Rotate 90 beams degrees, i.e. change Direction and (row or column)
             var newRow = -1;
             var newCol = -1;
             var newDirection = Direction.Unknown;
             switch (direction)
             {
                 case Direction.E:
-                    newRow = entry == '/' ? index.row - 1 : index.row + 1;
-                    newDirection = entry == '/' ? Direction.N : Direction.S;
+                    newRow = currentChar == '/' ? index.row - 1 : index.row + 1;
+                    newDirection = currentChar == '/' ? Direction.N : Direction.S;
                     CalculateBeamRecursively((newRow, index.col), newDirection);
                     break;
                 case Direction.W:
-                    newRow = entry == '\\' ? index.row - 1 : index.row + 1;
-                    newDirection = entry == '\\' ? Direction.N : Direction.S;
+                    newRow = currentChar == '\\' ? index.row - 1 : index.row + 1;
+                    newDirection = currentChar == '\\' ? Direction.N : Direction.S;
                     CalculateBeamRecursively((newRow, index.col), newDirection);
                     break;
                 case Direction.N:
-                    newCol = entry == '/' ? index.col + 1 : index.col - 1;
-                    newDirection = entry == '/' ? Direction.E : Direction.W;
+                    newCol = currentChar == '/' ? index.col + 1 : index.col - 1;
+                    newDirection = currentChar == '/' ? Direction.E : Direction.W;
                     CalculateBeamRecursively((index.row, newCol), newDirection);
                     break;
                 case Direction.S:
-                    newCol = entry == '\\' ? index.col + 1 : index.col - 1;
-                    newDirection = entry == '\\' ? Direction.E : Direction.W;
+                    newCol = currentChar == '\\' ? index.col + 1 : index.col - 1;
+                    newDirection = currentChar == '\\' ? Direction.E : Direction.W;
                     CalculateBeamRecursively((index.row, newCol), newDirection);
                     break;
             }
         }
-        else if (_splitters.Contains(entry))
+        else if (_splitters.Contains(currentChar))
         {
+            // Two options.
+            // Perpendicular => Continue in same direction
+            // Parallel => Split into two beams
             switch (direction)
             {
                 case Direction.E:
-                    switch (entry)
+                    switch (currentChar)
                     {
                         case '-':
                             CalculateBeamRecursively((index.row, index.col + 1), Direction.E);
@@ -181,7 +189,7 @@ class Lava
                     }
                     break;
                 case Direction.W:
-                    switch (entry)
+                    switch (currentChar)
                     {
                         case '-':
                             CalculateBeamRecursively((index.row, index.col - 1), Direction.W);
@@ -194,28 +202,28 @@ class Lava
                     }
                     break;
                 case Direction.N:
-                    switch (entry)
+                    switch (currentChar)
                     {
-                        case '|':
-                            CalculateBeamRecursively((index.row - 1, index.col), Direction.N);
-                            break;
                         case '-':
                             // Split into two beams
                             CalculateBeamRecursively((index.row, index.col - 1), Direction.W);
                             CalculateBeamRecursively((index.row, index.col + 1), Direction.E);
+                            break;
+                        case '|':
+                            CalculateBeamRecursively((index.row - 1, index.col), Direction.N);
                             break;
                     }
                     break;
                 case Direction.S:
-                    switch (entry)
+                    switch (currentChar)
                     {
-                        case '|':
-                            CalculateBeamRecursively((index.row + 1, index.col), Direction.S);
-                            break;
                         case '-':
                             // Split into two beams
                             CalculateBeamRecursively((index.row, index.col - 1), Direction.W);
                             CalculateBeamRecursively((index.row, index.col + 1), Direction.E);
+                            break;
+                        case '|':
+                            CalculateBeamRecursively((index.row + 1, index.col), Direction.S);
                             break;
                     }
                     break;
