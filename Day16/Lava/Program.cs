@@ -50,19 +50,20 @@ class Lava
         var validDirections = Enum.GetValues(typeof(Direction)).Cast<Direction>().Where(d => d != Direction.Unknown).ToList();
         List<int> listEnergizedEntries = new();
         Initialize(fileName);
-        
-        foreach (var startRow in Enumerable.Range(0, _grid.Count))
+
+        List<(int row, int col)> startPositions = Enumerable.Range(0, _grid[0].Count).Select(startCol => (0, startCol)).ToList();
+        startPositions.AddRange(Enumerable.Range(0, _grid[_grid.Count - 1].Count).Select(startCol => (_grid.Count - 1, startCol)));
+        startPositions.AddRange(Enumerable.Range(0, _grid.Count).Select(startRow => (startRow, 0)));
+        startPositions.AddRange(Enumerable.Range(0, _grid.Count).Select(startRow => (startRow, _grid[startRow].Count - 1)));
+
+        foreach (var startPosition in startPositions)
         {
-            foreach (var startCol in Enumerable.Range(0, _grid[0].Count))
+            foreach (Direction startDirection in validDirections)
             {
-                foreach (Direction startDirection in validDirections)
-                {
-                    Initialize(fileName);
-                    (int row, int col) startIndex = (startRow, startCol);
-                    CalculateBeamRecursively(startIndex, startDirection);
-                    var energizedEntries = _energizedGrid.SelectMany(row => row).Count(cell => cell == '#');
-                    listEnergizedEntries.Add(energizedEntries);
-                }
+                Initialize(fileName);
+                CalculateBeamRecursively(startPosition, startDirection);
+                var energizedEntries = _energizedGrid.SelectMany(row => row).Count(cell => cell == '#');
+                listEnergizedEntries.Add(energizedEntries);
             }
         }
 
