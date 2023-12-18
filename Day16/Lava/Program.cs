@@ -29,7 +29,6 @@ class Lava
     {
         '/', '\\'
     };
-    
     private List<char> _splitters = new()
     {
         '|', '-'
@@ -67,10 +66,6 @@ class Lava
             }
         }
 
-        var totalEntries = _grid.Count * _grid[0].Count * 4;
-        Console.WriteLine($"Expected {totalEntries} entries and found {listEnergizedEntries.Count}");
-        // var higherEntries = listEnergizedEntries.Where(val => val > 6978).OrderBy(x => x).ToList();
-        // higherEntries.ForEach(x => Console.WriteLine(x));
         return listEnergizedEntries.Max();
     }
 
@@ -115,7 +110,7 @@ class Lava
             return;
         }
         
-        // Retrieve currentChar and set energizedgrid entry
+        // Retrieve currentChar and set energizedGrid entry
         var currentChar = _grid[index.row][index.col];
         _energizedGrid[index.row][index.col] = '#';
         
