@@ -12,7 +12,9 @@ class Program
         Console.WriteLine(maze.Solve1("data"));
         // maze.Solve2("dummydata1").Should().Be(1);
         maze.Solve2("dummydata3").Should().Be(8);
-        // Console.WriteLine($"Answer = {maze.Solve2("data")}");
+        maze.Solve2("dummydata4").Should().Be(10);
+
+        Console.WriteLine($"Answer = {maze.Solve2("data")}");
     }
 }
 
@@ -162,6 +164,17 @@ class Maze
         var maxCol = pipeCoordinates.Max(x => x.colIndex);
         // Create subgrid and apply Flooding algorithm
 
+        for (int i = 0; i < _grid.Count; i++)
+        {
+            for (int j = 0; j < _grid[0].Count; j++)
+            {
+                if (!pipeCoordinates.Contains((i, j)))
+                {
+                    _grid[i][j] = '.';
+                }
+            }
+        }
+        
         var padding = 1;
         List<List<char>> subGrid = _grid
             .Skip(minRow)
