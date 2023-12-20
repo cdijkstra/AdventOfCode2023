@@ -10,7 +10,7 @@ class Program
         var maze = new Maze();
         maze.Solve1("dummydata1").Should().Be(4);
         Console.WriteLine(maze.Solve1("data"));
-        // maze.Solve2("dummydata1").Should().Be(1);
+        maze.Solve2("dummydata2").Should().Be(4);
         maze.Solve2("dummydata3").Should().Be(8);
         maze.Solve2("dummydata4").Should().Be(10);
 
@@ -145,6 +145,8 @@ class Maze
                 {
                     possiblePipeCoordinates.Add((considerEntry.rowIndex, considerEntry.colIndex));
                     pipeCoordinates = possiblePipeCoordinates;
+                    // Replace S by right pipe?
+                    _grid[considerEntry.rowIndex][considerEntry.colIndex] = '-'; // For real data
                     continueLoop = false;
                 }
 
@@ -175,7 +177,6 @@ class Maze
             }
         }
         
-        var padding = 1;
         List<List<char>> subGrid = _grid
             .Skip(minRow)
             .Take(maxRow - minRow + 1)
@@ -206,13 +207,8 @@ class Maze
                 var pipeCrossings = 0;
                 // Use LINQ to get the List<char> from the index to the last entry in the row
                 string substring = string.Join("", row.Skip(index).ToList());
-                // Inside if we find an odd
-                if (substring.Contains('S'))
-                {
-                    var indexS = substring.IndexOf('S');
-                    substring = substring.Substring(0, indexS);
-                }
                 
+                // Inside if we find an odd number of crossing
                 pipeCrossings += substring.Count(c => c == '|');
                 var comp1 = Regex.Matches(substring, @"F-*J").Count;
                 var comp2 = Regex.Matches(substring, @"L-*7").Count;
