@@ -145,7 +145,32 @@ class Maze
                     possiblePipeCoordinates.Add((considerEntry.rowIndex, considerEntry.colIndex));
                     pipeCoordinates = possiblePipeCoordinates;
                     // Replace S by right pipe?
-                    // _grid[considerEntry.rowIndex][considerEntry.colIndex] = '-'; // For real data
+                    char replaceSBy = '.';
+                    if (possiblePipeCoordinates.Contains((considerEntry.rowIndex - 1, considerEntry.colIndex)) && possiblePipeCoordinates.Contains((considerEntry.rowIndex + 1, considerEntry.colIndex)))
+                    {
+                        replaceSBy = '|';
+                    }
+                    else if (possiblePipeCoordinates.Contains((considerEntry.rowIndex - 1, considerEntry.colIndex)) && possiblePipeCoordinates.Contains((considerEntry.rowIndex, considerEntry.colIndex + 1)))
+                    {
+                        replaceSBy = 'L';
+                    }
+                    else if (possiblePipeCoordinates.Contains((considerEntry.rowIndex - 1, considerEntry.colIndex)) && possiblePipeCoordinates.Contains((considerEntry.rowIndex, considerEntry.colIndex - 1)))
+                    {
+                        replaceSBy = 'J';
+                    }
+                    else if (possiblePipeCoordinates.Contains((considerEntry.rowIndex + 1, considerEntry.colIndex)) && possiblePipeCoordinates.Contains((considerEntry.rowIndex, considerEntry.colIndex - 1)))
+                    {
+                        replaceSBy = '7';
+                    }
+                    else if (possiblePipeCoordinates.Contains((considerEntry.rowIndex + 1, considerEntry.colIndex)) && possiblePipeCoordinates.Contains((considerEntry.rowIndex, considerEntry.colIndex + 1)))
+                    {
+                        replaceSBy = 'F';
+                    }
+                    else if (possiblePipeCoordinates.Contains((considerEntry.rowIndex, considerEntry.colIndex - 1)) && possiblePipeCoordinates.Contains((considerEntry.rowIndex, considerEntry.colIndex + 1)))
+                    {
+                        replaceSBy = '-';
+                    }
+                    _grid[considerEntry.rowIndex][considerEntry.colIndex] = replaceSBy;
                     continueLoop = false;
                 }
 
@@ -219,7 +244,7 @@ class Maze
                 var comp2 = Regex.Matches(substring, @"L-*7").Count;
                 pipeCrossings += comp1 + comp2;
                 // For example, print the characters in the substring
-                if (pipeCrossings > 0 && pipeCrossings % 2 == 0)
+                if (pipeCrossings % 2 == 0)
                 {
                     outsideLoop.Add((rowIndex, index));
                 }
