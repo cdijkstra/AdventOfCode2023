@@ -7,9 +7,9 @@ class Program
     static void Main(string[] args)
     {
         var lavaduct = new Lavaduct();
-        // lavaduct.Solve1("dummydata").Should().Be(62);
+        lavaduct.Solve1("dummydata").Should().Be(62);
         Console.WriteLine(lavaduct.Solve1("data"));
-        // 3764 too low
+        lavaduct.Solve2("dummydata").Should().Be(62);
     }
 }
 
@@ -18,8 +18,17 @@ public enum Direction
     U,D,R,L
 }
 
+
 class Lavaduct
 {
+    private static readonly Dictionary<int, Direction> IntToDirection = new()
+    {
+        { 0, Direction.R },
+        { 1, Direction.D },
+        { 2, Direction.L },
+        { 3, Direction.U },
+    };
+    
     private List<List<char>> _grid = new();
 
     private List<List<char>> _subgrid = new();
@@ -108,6 +117,90 @@ class Lavaduct
             Console.WriteLine();
         }
         
+        return _subgrid.Sum(row => row.Count(c => c is '#' or '.'));
+    }
+    
+    public int Solve2(string fileName)
+    {
+        _grid = Enumerable.Range(0, int.MaxValue)
+            .Select(_ => Enumerable.Repeat('.', int.MaxValue).ToList())
+            .ToList();
+        _subgrid = new();
+        
+        List<(int x, int y)> locations = new();
+        (int x, int y) location = ((int.MaxValue - 1) / 2, (int.MaxValue - 1) / 2);
+        locations.Add(location);
+        _grid[location.x][location.y] = '#';
+        
+        foreach (var line in File.ReadAllLines($"Data/{fileName}"))
+        {
+            var hex = line.Split()[2].Trim('(', '#').TrimEnd(')');
+            var numHex = hex.Substring(0, 5);
+            var dirHex = int.Parse(hex.Substring(5));
+            var dir = IntToDirection[dirHex];
+            var steps = int.Parse(numHex, System.Globalization.NumberStyles.HexNumber);
+            switch (dir)
+            {
+                case Direction.L:
+                    foreach (var step in Enumerable.Range(1, steps))
+                    {
+                        _grid[location.x][location.y - step] = '#';
+                        locations.Add((location.x, location.y - step));
+                    }
+                    location.y -= steps;
+                    break;
+                case Direction.R:
+                    foreach (var step in Enumerable.Range(1, steps))
+                    {
+                        _grid[location.x][location.y + step] = '#';
+                        locations.Add((location.x, location.y + step));
+
+                    }
+                    location.y += steps;
+                    break;
+                case Direction.U:
+                    foreach (var step in Enumerable.Range(1, steps))
+                    {
+                        _grid[location.x - step][location.y] = '#';
+                        locations.Add((location.x - step, location.y));
+                    }
+                    location.x -= steps;
+                    break;
+                case Direction.D:
+                    foreach (var step in Enumerable.Range(1, steps))
+                    {
+                        _grid[location.x + step][location.y] = '#';
+                        locations.Add((location.x + step, location.y));
+                    }
+                    location.x += steps;
+                    break;
+            }
+        }
+        
+        // Find min,max row and column in pipeCoordinates
+        var minRow = locations.Min(loc => loc.x);
+        var maxRow = locations.Max(loc => loc.x);
+        var minCol = locations.Min(loc => loc.y);
+        var maxCol = locations.Max(loc => loc.y);
+        
+        _subgrid = _grid
+            .Skip(minRow)
+            .Take(maxRow - minRow + 1)
+            .Select(row => row.Skip(minCol).Take(maxCol - minCol + 1).ToList())
+            .ToList();
+
+        _subgrid.Insert(0, new List<char>(Enumerable.Repeat('.', _subgrid[0].Count)));
+        _subgrid.Add(new List<char>(Enumerable.Repeat('.', _subgrid[0].Count)));
+        _subgrid.ForEach(row =>
+        {
+            row.Insert(0, '.');
+            row.Add('.');
+        });
+        
+        Console.WriteLine("Start flooding");
+        
+        FloodCoordinateIteratively(0, 0);
+        _floodLocations.ForEach(loc => _subgrid[loc.x][loc.y] = '0');
         return _subgrid.Sum(row => row.Count(c => c is '#' or '.'));
     }
     
