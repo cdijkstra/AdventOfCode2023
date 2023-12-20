@@ -86,8 +86,7 @@ class Maze
                     continueLoop = false;
                 }
                 
-                if (considerEntry.rowIndex == _startIndices.RowIndex && considerEntry.colIndex == _startIndices.ColIndex && 
-                                    loopLength > 0)
+                if (considerEntry.rowIndex == _startIndices.RowIndex && considerEntry.colIndex == _startIndices.ColIndex && loopLength > 0)
                 {
                     lengths.Add(loopLength / 2);
                     continueLoop = false;
@@ -146,7 +145,7 @@ class Maze
                     possiblePipeCoordinates.Add((considerEntry.rowIndex, considerEntry.colIndex));
                     pipeCoordinates = possiblePipeCoordinates;
                     // Replace S by right pipe?
-                    _grid[considerEntry.rowIndex][considerEntry.colIndex] = '-'; // For real data
+                    // _grid[considerEntry.rowIndex][considerEntry.colIndex] = '-'; // For real data
                     continueLoop = false;
                 }
 
@@ -205,8 +204,14 @@ class Maze
             {
                 if (character != '.') continue;
                 var pipeCrossings = 0;
-                // Use LINQ to get the List<char> from the index to the last entry in the row
-                string substring = string.Join("", row.Skip(index).ToList());
+                // Use LINQ to get the List<char> from the left to the index
+                string substring = string.Join("", row.Take(index).ToList());
+
+                if (character == 'S')
+                {
+                   var sIndex = substring.IndexOf('S');
+                   substring = substring.Substring(0, sIndex);
+                }
                 
                 // Inside if we find an odd number of crossing
                 pipeCrossings += substring.Count(c => c == '|');
