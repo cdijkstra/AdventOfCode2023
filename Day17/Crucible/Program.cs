@@ -7,6 +7,7 @@ class Program
     {
         var crucible = new Crucible();
         crucible.Solve1("dummydata").Should().Be(102);
+        Console.WriteLine(crucible.Solve1("data"));
     }
 }
 
@@ -42,37 +43,44 @@ class Crucible
                     X = rowIndex,
                     Y = colIndex,
                     HeatLoss = heatLoss - '0',
-                    TotalHeatLoss = 0
-                    // DistanceFromExit = CalculateDistanceFromExit(numbers.Length, rowIndex, colIndex)
+                    TotalHeatLoss = 0,
+                    Direction = Direction.Unknown
                 }
             ).ToList()
         ).ToList();
 
-        Entry initialEntry = _entries[0][0];
-        initialEntry.TotalHeatLoss = 0;
-        initialEntry.Direction = Direction.Unknown;
+        Entry initialEntry = new Entry()
+        {
+            X = 0,
+            Y = 0,
+            TotalHeatLoss = 0,
+            Direction = Direction.Unknown
+        };
         PriorityQueue<Entry, int> queue = new();
         queue.Enqueue(initialEntry, 0);
 
         List<Entry> visited = new() { initialEntry };
-        
+        var maxX = _entries.Count - 1;
+        var maxY = _entries[1].Count - 1;
         while (queue.Count > 0)
         {
             var entry = queue.Dequeue();
-            Console.WriteLine(entry.TotalHeatLoss);
+            Console.WriteLine($"{entry.TotalHeatLoss} at ({entry.X},{entry.Y})");
             foreach (var neighbor in FindValidMoves(entry))
             {
-                if (neighbor.X == _entries.Count - 1 && neighbor.Y == _entries[1].Count - 1)
+                if (neighbor.X == maxX && neighbor.Y == maxY)
                 {
-                    return entry.TotalHeatLoss + neighbor.HeatLoss;
+                    return neighbor.TotalHeatLoss;
                 }
-
-                var totalHeatLoss = entry.TotalHeatLoss + neighbor.HeatLoss;
-                var visitedEntry = visited.Where(visitedEntry => visitedEntry.X == neighbor.X && visitedEntry.Y == neighbor.Y);
-                if (visitedEntry.Any(en => en.TotalHeatLoss <= totalHeatLoss)) continue;
                 
-                neighbor.TotalHeatLoss = totalHeatLoss;
-                queue.Enqueue(neighbor, totalHeatLoss);
+                var visitedEntry = visited.Where(visitedEntry => 
+                    visitedEntry.X == neighbor.X && visitedEntry.Y == neighbor.Y && 
+                    visitedEntry.Direction == neighbor.Direction && visitedEntry.DirectionRepeat == neighbor.DirectionRepeat);
+                if (visitedEntry.Any(en => en.TotalHeatLoss < neighbor.TotalHeatLoss)) continue;
+                
+                // Take sooner from queue for closer to solution;
+                var priority = neighbor.TotalHeatLoss + 4 * (maxX - neighbor.X + maxY - neighbor.Y);
+                queue.Enqueue(neighbor, priority);
                 visited.Add(neighbor);
             }
         }
@@ -83,75 +91,93 @@ class Crucible
     private List<Entry> FindValidMoves(Entry entry)
     {
         List<Entry> neighbors = new();
-        if (entry.X > 0 && entry.Direction != Direction.S)
-        {
-            // Moving north, not allowed from previous south
-            var newEntry = _entries[entry.X - 1][entry.Y];
+        if (entry.X > 0 && entry.Direction != Direction.S) //  && entry.Direction != Direction.S
+        { // Moving north, not allowed from previous south
+            var newEntry = new Entry()
+            {
+                X = entry.X - 1,
+                Y = entry.Y,
+                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X - 1][entry.Y].HeatLoss,
+                Direction = Direction.N
+            };
             newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
             
-            newEntry.Direction = Direction.N;
-            if (entry.Direction != Direction.N)
-            {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry is { Direction: Direction.N, DirectionRepeat: <= 2 })
+            if (entry is { Direction: Direction.N, DirectionRepeat: <= 2 })
             {
                 newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
+                neighbors.Add(newEntry);
+            }
+            else if (entry.Direction != Direction.N)
+            {
+                newEntry.DirectionRepeat = 1;
                 neighbors.Add(newEntry);
             }
         }
         if (entry.X < _entries.Count - 1 && entry.Direction != Direction.N)
         {
             // Moving south, not allowed from previous north
-            var newEntry = _entries[entry.X + 1][entry.Y];
-            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
-
-            newEntry.Direction = Direction.S;
-            if (entry.Direction != Direction.S)
+            var newEntry = new Entry()
             {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry is { Direction: Direction.S, DirectionRepeat: <= 2 })
+                X = entry.X + 1,
+                Y = entry.Y,
+                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X + 1][entry.Y].HeatLoss,
+                Direction = Direction.S
+            };
+            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
+            if (entry is { Direction: Direction.S, DirectionRepeat: <= 2 })
             {
                 newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
+                neighbors.Add(newEntry);
+            }
+            else if (entry.Direction != Direction.S)
+            {
+                newEntry.DirectionRepeat = 1;
                 neighbors.Add(newEntry);
             }
         }
         if (entry.Y > 0 && entry.Direction != Direction.E)
         {
             // Moving west, not allowed from previous east
-            var newEntry = _entries[entry.X][entry.Y - 1];
-            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
-            
-            newEntry.Direction = Direction.W;                
-            if (entry.Direction != Direction.W)
+            var newEntry = new Entry()
             {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry is { Direction: Direction.W, DirectionRepeat: <= 2 })
+                X = entry.X,
+                Y = entry.Y - 1,
+                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X][entry.Y - 1].HeatLoss,
+                Direction = Direction.W
+            };
+            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
+
+            if (entry is { Direction: Direction.W, DirectionRepeat: <= 2 })
             {
                 newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
+                neighbors.Add(newEntry);
+            }
+            else if (entry.Direction != Direction.W)
+            {
+                newEntry.DirectionRepeat = 1;
                 neighbors.Add(newEntry);
             }
         }
         if (entry.Y < _entries[0].Count - 1 && entry.Direction != Direction.W)
         {
             // Moving east, not allowed from previous west
-            var newEntry = _entries[entry.X][entry.Y + 1];
-            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
-
-            newEntry.Direction = Direction.E;
-            if (entry.Direction != Direction.E)
+            var newEntry = new Entry()
             {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry is { Direction: Direction.E, DirectionRepeat: <= 2 })
+                X = entry.X,
+                Y = entry.Y + 1,
+                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X][entry.Y + 1].HeatLoss,
+                Direction = Direction.E
+            };
+            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
+            
+            if (entry is { Direction: Direction.E, DirectionRepeat: <= 2 })
             {
                 newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
+                neighbors.Add(newEntry);
+            }
+            else if (entry.Direction != Direction.E)
+            {
+                newEntry.DirectionRepeat = 1;
                 neighbors.Add(newEntry);
             }
         }

@@ -49,11 +49,69 @@ class HotSprings()
             var instructions = entry.Split()[1].Split(",").Select(int.Parse).ToList();
             var mergedInstructions = string.Join(",", Enumerable.Repeat(instructions, 5).SelectMany(x => x)).Split(",").Select(int.Parse).ToList();
 
-            var totalcoms = CheckCombinations(simplifiedSequence, 0, mergedInstructions);
-            totalCombis += totalcoms;
+            GetCount(entry, mergedInstructions);
         }
 
         return totalCombis;
+    }
+
+    private long GetCount(string springs, List<int> groups)
+    {
+        while (true)
+        {
+            if (groups.Count == 0 && springs.Contains('#'))
+            {
+                return 0;
+            }
+
+            if (groups.Count > 0 && string.IsNullOrEmpty(springs))
+            {
+                return 0;
+            }
+
+            if (springs.StartsWith('?'))
+            {
+                return GetCount('.' + springs[1..], groups) + GetCount('#' + springs[1..], groups);
+            }
+
+            if (springs.StartsWith('#')) // Start of a group
+            {
+                if (groups.Count == 0)
+                {
+                    return 0; // No more groups to match, though functional springs are present
+                }
+
+                if (springs.Length < groups[0])
+                {
+                    return 0; // Not enough characters to match the group
+                }
+
+                var substringWithCorrectLength = springs[..groups[0]];
+                if (substringWithCorrectLength.Contains('.'))
+                {
+                    return 0;
+                }
+
+                if (groups.Count > 1)
+                {
+                    if (springs.Length <= groups[0] || springs[groups[0]] == '#')
+                    {
+                        return 0; // Group cannot be followed by a spring, and there must be enough characters left
+                    }
+
+                    springs = springs[(groups[0] + 1)..];
+
+                    groups = groups[1..];
+                }
+                else
+                {
+                    springs = springs[groups[0]..]; // Last group, no need to check the character after the group
+                    groups = groups[1..];
+                }
+            }
+        }
+
+        throw new Exception("Invalid input");
     }
 
     string BuildRegexPattern(List<int> numbers)
