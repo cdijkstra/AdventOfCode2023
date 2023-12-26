@@ -1,5 +1,4 @@
-﻿using System.Security.Cryptography.X509Certificates;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using FluentAssertions;
 
 namespace Aplenty;
@@ -103,8 +102,24 @@ class Aplenty
 
             allValues.Add(FindContributionByReversing(dict, worflow, "A"));
         }
+        
         // Remove duplicate entries... How?
+        // Look at combinations of x,m,a,s and if they were already added
+        foreach (var values in allValues)
+        {
+            Console.WriteLine($"x: {values[Characters.x].min}, {values[Characters.x].max}");
+            Console.WriteLine($"m: {values[Characters.m].min}, {values[Characters.m].max}");
+            Console.WriteLine($"a: {values[Characters.a].min}, {values[Characters.a].max}");
+            Console.WriteLine($"s: {values[Characters.s].min}, {values[Characters.s].max}");
+        }
 
+        Dictionary<Characters, int> contributions = Enum.GetValues(typeof(Characters))
+            .Cast<Characters>()
+            .ToDictionary(
+                character => character,
+                character => allValues.Any(vals => vals.GetValueOrDefault(character) == (1, 4000)) ? 4000 : 0
+            );
+        
         return 5;
     }
 
