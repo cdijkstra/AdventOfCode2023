@@ -25,6 +25,7 @@ class Block
 
 class Tetris
 {
+    private Dictionary<int, List<(int x, int y, int z, int value)>> _blockCoordinateCache = new();
     private List<Block> _blocks = new();
     private List<List<List<int>>> _grid = new();
     public int Solve1(string fileName)
@@ -89,14 +90,22 @@ class Tetris
                 var maxZ = blockCoordinates.Max(val => val.z);
 
                 if (lowestCoordinates.All(vals => vals.z == 1)) continue;
-                if (!lowestCoordinates.All(vals => _grid[vals.x][vals.y][vals.z - 1] == 0)) continue;
+                var fallingDistance = CalculateFallingDistance(lowestCoordinates.Select(item => (item.x, item.y, item.z)).ToList());
+                if (fallingDistance == 0) continue;
                 
                 continueLoop = true;
-                lowestCoordinates.ForEach(coors =>
+                
+                for (int idz = 1; idz <= fallingDistance; idz++)
                 {
-                    _grid[coors.x][coors.y][coors.z - 1] = coors.value;
-                    _grid[coors.x][coors.y][maxZ] = 0;
-                });
+                    lowestCoordinates.ForEach(coors =>
+                    {
+                        _grid[coors.x][coors.y][coors.z - idz] = coors.value;
+                        _grid[coors.x][coors.y][maxZ - idz + 1] = 0;
+                    });
+                }
+                
+                var updatedCache = _blockCoordinateCache[block.entry].Select(item => (item.x, item.y, item.z - fallingDistance, item.value)).ToList();;
+                _blockCoordinateCache[block.entry] = updatedCache;
             }
         }
 
@@ -138,6 +147,26 @@ class Tetris
         return count;
     }
 
+    private int CalculateFallingDistance(List<(int x, int y, int z)> lowestCoordinates)
+    {
+        var maxHeightToFall = lowestCoordinates[0].z - 1;
+        var fallingDistance = 0;
+        var continueFalling = true;
+        while (fallingDistance <= maxHeightToFall && continueFalling)
+        {
+            if (!lowestCoordinates.All(vals => _grid[vals.x][vals.y][vals.z - fallingDistance - 1] == 0))
+            {
+                continueFalling = false;
+            }
+            else
+            {
+                fallingDistance++;
+            }
+        }
+
+        return fallingDistance;
+    }
+
     private static List<(int x, int y, int z, int value)> FindLowestBlockCoordinates(IEnumerable<(int x, int y, int z, int value)> blockCoordinates)
     {
         var lowestCoordinates = blockCoordinates
@@ -160,11 +189,18 @@ class Tetris
 
     private IEnumerable<(int x, int y, int z, int value)> FindBlockCoordinates(int blockEntry)
     {
-        var blockCoordinates = _grid
-            .SelectMany((xValues, x) =>
-                xValues.SelectMany((yValues, y) =>
-                    yValues.Select((zValue, z) => (x, y, z, value: zValue))))
-            .Where(coord => coord.value == blockEntry);
-        return blockCoordinates;
+        if (!_blockCoordinateCache.ContainsKey(blockEntry))
+        {
+            var blockCoordinates = _grid
+                .SelectMany((xValues, x) =>
+                    xValues.SelectMany((yValues, y) =>
+                        yValues.Select((zValue, z) => (x, y, z, value: zValue))))
+                .Where(coord => coord.value == blockEntry).ToList();
+            
+            _blockCoordinateCache[blockEntry] = blockCoordinates;
+            return blockCoordinates;
+        }
+        
+        return _blockCoordinateCache[blockEntry];
     }
 }
