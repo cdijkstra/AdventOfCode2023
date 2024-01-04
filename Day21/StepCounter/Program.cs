@@ -7,9 +7,9 @@ class Program
     static void Main(string[] args)
     {
         var garden = new Garden();
-        garden.Solve1("dummydata", 6).Should().Be(16);
-        Console.WriteLine(garden.Solve1("data", 64));
-        
+        // garden.Solve1("dummydata", 6).Should().Be(16);
+        // Console.WriteLine(garden.Solve1("data", 64));
+        //
         Console.WriteLine(garden.Solve2("data", 26501365));
         // Higher than 618257138282108
     }
@@ -80,6 +80,7 @@ class Garden
 
     public long Solve2(string fileName, int repeats)
     {
+        Initialize(fileName);
         var furthestGrid = (repeats - (_grid.Count - 1) / 2) / _grid.Count; // = 202300
         // We see that the amount of steps allows us to reach the end of a grid exactly when walking in one dirction
         // The first one has to traverse distance of (_grid.Count - 1) / 2) and then 202299 remaining ones
@@ -108,17 +109,18 @@ class Garden
         var fillBottom = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, startCol,gridSize - 1);
         var fillLeft = AmountOfPointsWithStartingPosition(fileName, startRow, gridSize - 1,gridSize - 1);
         
-        var tr_small = AmountOfPointsWithStartingPosition(fileName, 0, 0,(gridSize - 1) / 2 - 1);
-        var tl_small = AmountOfPointsWithStartingPosition(fileName, 0, gridSize - 1,(gridSize - 1) / 2 - 1);
+        // Now we have to add small and big segments across the diagonals.
+        var tr_small = AmountOfPointsWithStartingPosition(fileName, 0, gridSize - 1,(gridSize - 1) / 2 - 1);
+        var tl_small = AmountOfPointsWithStartingPosition(fileName, 0, 0,(gridSize - 1) / 2 - 1);
         var dl_small = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, gridSize - 1,(gridSize - 1) / 2 - 1);
         var dr_small = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, 0,(gridSize - 1) / 2 - 1);
-        var smallOccurencesPerQuarter = furthestGrid + 1;
+        var smallOccurencesPerQuarter = furthestGrid;
         
         var tr_large = AmountOfPointsWithStartingPosition(fileName, 0, 0,(3 * gridSize - 1) / 2 - 1);
         var tl_large = AmountOfPointsWithStartingPosition(fileName, 0, gridSize - 1,(3 * gridSize - 1) / 2 - 1);
         var dl_large = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, gridSize - 1,(3 * gridSize - 1) / 2 - 1);
         var dr_large = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, 0,(3 * gridSize - 1) / 2 - 1);
-        var largeOccurencesPerQuarter = furthestGrid;
+        var largeOccurencesPerQuarter = furthestGrid - 1;
         
         Console.WriteLine($"{oddPoints},{evenPoints},{fillTop},{fillRight},{fillBottom},{fillLeft},{tr_small},{tl_small},{dr_small},{dl_small}");
         
@@ -133,9 +135,6 @@ class Garden
                           fillTop + fillBottom + fillLeft + fillRight +
                           smallOccurencesPerQuarter * (tr_small + tl_small + dl_small + dr_small) +
                           largeOccurencesPerQuarter * (tr_large + tl_large + dl_large + dr_large));
-        
-        // Now we have to add small and big segments across the diagonals.
-
         return 1;
     }
 
