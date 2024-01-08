@@ -1,6 +1,4 @@
-﻿using FluentAssertions;
-
-namespace StepCounter;
+﻿namespace StepCounter;
 
 class Program
 {
@@ -82,15 +80,17 @@ class Garden
     {
         Initialize(fileName);
         var furthestGrid = (repeats - (_grid.Count - 1) / 2) / _grid.Count; // = 202300
-        // We see that the amount of steps allows us to reach the end of a grid exactly when walking in one dirction
+        // We see that the amount of steps allows us to reach the end of a grid exactly when walking in one direction
         // The first one has to traverse distance of (_grid.Count - 1) / 2) and then 202299 remaining ones
-        //       []
-        //     [][][]
-        //   [][][][][]
-        // [][][][][][][]
-        //   [][][][][]
-        //     [][][]
-        //       []
+        //         [] 
+        //       [][][]
+        //     [][][][][]
+        //   [][][][][][][]
+        // [][][][][][][][][]
+        //   [][][[][][][]
+        //     [][][][][]
+        //       [][][]
+        //         []
         
         // Within all except the most outer ones N,S,W,E we can very likely reach all points, given that the matrix is sparse
         // The grid has an odd size. That means that we can reach different points for 'odd' and 'even' grids, where the origin is an 'even' grid.
@@ -104,38 +104,37 @@ class Garden
         var startCol = coordinates[0].column;
         var gridSize = _grid.Count;
         
-        var fillTop = AmountOfPointsWithStartingPosition(fileName, 0, startCol,gridSize - 1);
-        var fillRight = AmountOfPointsWithStartingPosition(fileName, startRow, 0,gridSize - 1);
-        var fillBottom = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, startCol,gridSize - 1);
-        var fillLeft = AmountOfPointsWithStartingPosition(fileName, startRow, gridSize - 1,gridSize - 1);
+        var cornerTop = AmountOfPointsWithStartingPosition(fileName, 0, startCol,gridSize - 1);
+        var cornerRight = AmountOfPointsWithStartingPosition(fileName, startRow, 0,gridSize - 1);
+        var cornerBottom = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, startCol,gridSize - 1);
+        var cornerLeft = AmountOfPointsWithStartingPosition(fileName, startRow, gridSize - 1,gridSize - 1);
         
         // Now we have to add small and big segments across the diagonals.
-        var tr_small = AmountOfPointsWithStartingPosition(fileName, 0, gridSize - 1,(gridSize - 1) / 2 - 1);
-        var tl_small = AmountOfPointsWithStartingPosition(fileName, 0, 0,(gridSize - 1) / 2 - 1);
-        var dl_small = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, gridSize - 1,(gridSize - 1) / 2 - 1);
-        var dr_small = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, 0,(gridSize - 1) / 2 - 1);
+        var tr_small = AmountOfPointsWithStartingPosition(fileName, 0, gridSize - 1,gridSize / 2 - 1);
+        var tl_small = AmountOfPointsWithStartingPosition(fileName, 0, 0,gridSize / 2 - 1);
+        var dl_small = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, gridSize - 1,gridSize / 2 - 1);
+        var dr_small = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, 0,gridSize / 2 - 1);
         var smallOccurencesPerQuarter = furthestGrid;
         
-        var tr_large = AmountOfPointsWithStartingPosition(fileName, 0, 0,(3 * gridSize - 1) / 2 - 1);
-        var tl_large = AmountOfPointsWithStartingPosition(fileName, 0, gridSize - 1,(3 * gridSize - 1) / 2 - 1);
-        var dl_large = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, gridSize - 1,(3 * gridSize - 1) / 2 - 1);
-        var dr_large = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, 0,(3 * gridSize - 1) / 2 - 1);
+        var tr_large = AmountOfPointsWithStartingPosition(fileName, 0, 0,(3 * gridSize) / 2 - 1);
+        var tl_large = AmountOfPointsWithStartingPosition(fileName, 0, gridSize - 1,(3 * gridSize) / 2 - 1);
+        var dl_large = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, gridSize - 1,(3 * gridSize) / 2 - 1);
+        var dr_large = AmountOfPointsWithStartingPosition(fileName, gridSize - 1, 0,(3 * gridSize) / 2 - 1);
         var largeOccurencesPerQuarter = furthestGrid - 1;
         
-        Console.WriteLine($"{oddPoints},{evenPoints},{fillTop},{fillRight},{fillBottom},{fillLeft},{tr_small},{tl_small},{dr_small},{dl_small}");
+        Console.WriteLine($"{oddPoints},{evenPoints},{cornerTop},{cornerRight},{cornerBottom},{cornerLeft},{tr_small},{tl_small},{dr_small},{dl_small},{tr_large},{tl_large},{dr_large},{dl_large}");
         
         // we have to find out how many odd and even grids exist where all points can be reached!
         var oddGrids = Math.Pow(furthestGrid - 1, 2);
         var evenGrids = Math.Pow(furthestGrid, 2);
         
         Console.WriteLine($"{oddGrids},{evenGrids}");
-        
-        Console.WriteLine(evenPoints * evenGrids +
-                          oddPoints * oddGrids +
-                          fillTop + fillBottom + fillLeft + fillRight +
-                          smallOccurencesPerQuarter * (tr_small + tl_small + dl_small + dr_small) +
-                          largeOccurencesPerQuarter * (tr_large + tl_large + dl_large + dr_large));
-        return 1;
+        var answer = evenPoints * evenGrids +
+                     oddPoints * oddGrids +
+                     cornerTop + cornerBottom + cornerLeft + cornerRight +
+                     smallOccurencesPerQuarter * (tr_small + tl_small + dl_small + dr_small) +
+                     largeOccurencesPerQuarter * (tr_large + tl_large + dl_large + dr_large);
+        return (long) answer;
     }
 
     private List<(int row, int col)> FindPossibleLocations(int row, int col)
