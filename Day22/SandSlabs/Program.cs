@@ -10,7 +10,6 @@ class Program
         Console.WriteLine(tetris.Solve1("data"));
         tetris.Solve2("dummydata").Should().Be(7);
         Console.WriteLine(tetris.Solve2("data"));
-        // Lower than 73530
     }
 }
 
@@ -43,10 +42,7 @@ class Tetris
                 .Where(value => value != 0)
                 .ToList();
             
-            if (blocksAbove.All(ens => ens == 0))
-            {
-                _count++;
-            }
+            if (blocksAbove.All(ens => ens == 0)) _count++;
             else
             {
                 var blocksWontFall = blocksAbove.All(blockAbove =>
@@ -55,14 +51,10 @@ class Tetris
                     var lowestCoordinates = FindLowestBlockCoordinates(blockAboveCoordinates);
 
                     return lowestCoordinates.Any(vals =>
-                        _grid[vals.x][vals.y][vals.z - 1] != 0 &&
-                        _grid[vals.x][vals.y][vals.z - 1] != block.entry);
+                        _grid[vals.x][vals.y][vals.z - 1] != 0 && _grid[vals.x][vals.y][vals.z - 1] != block.entry);
                 });
                 
-                if (blocksWontFall)
-                {
-                    _count++;
-                }
+                if (blocksWontFall) _count++;
             }
         }
 
@@ -82,26 +74,30 @@ class Tetris
             
             var blocksAbove = highestCoordinates
                 .Select(coors => _grid[coors.x][coors.y][coors.z + 1])
-                .Distinct()
                 .Where(value => value != 0)
-                .ToList();
+                .Distinct().ToList();
 
-            if (blocksAbove.All(ens => ens == 0)) continue;
+            if (blocksAbove.Count == 0) continue;
             
-            var newGrid = _grid.Select(iList => iList
-                    .Select(jList => jList
-                        .Select(value => value == block.entry ? 0 : value)
-                        .ToList())
-                    .ToList())
-                .ToList();
-            
-            ChainReaction(blocksAbove, newGrid);
+            var newGrid = ConstructNewGrid(block);
+            List<int> deletedBlocks = new() { block.entry };
+            ChainReaction(blocksAbove, newGrid, deletedBlocks);
         }
 
         return _count;
     }
 
-    private void ChainReaction(List<int> currentBlocks, List<List<List<int>>> newGrid)
+    private List<List<List<int>>> ConstructNewGrid(Block block)
+    {
+        var newGrid = _grid.Select(iList => iList
+                .Select(jList => jList
+                    .Select(value => value == block.entry ? 0 : value).ToList())
+                .ToList())
+            .ToList();
+        return newGrid;
+    }
+
+    private void ChainReaction(List<int> currentBlocks, List<List<List<int>>> newGrid, List<int> deletedBlocks)
     {
         var blocksFalling = false;
         List<int> blocksAbove = new();
@@ -111,14 +107,17 @@ class Tetris
             var lowestCoordinates = FindLowestBlockCoordinates(blockAboveCoordinates);
             if (!lowestCoordinates.All(vals => newGrid[vals.x][vals.y][vals.z - 1] == 0)) continue;
             
+            deletedBlocks.Add(blockAbove);
             blocksFalling = true;
             _count++;
             var highestCoordinates = FindHighestBlockCoordinates(blockAboveCoordinates);
-            blocksAbove.AddRange(highestCoordinates
+
+            var newBlocks = highestCoordinates
                 .Select(coors => _grid[coors.x][coors.y][coors.z + 1])
-                .Distinct()
                 .Where(value => value != 0)
-                .ToList());
+                .Distinct()
+                .ToList();
+            blocksAbove.AddRange(newBlocks);
 
             newGrid = newGrid
                 .Select(iList => iList
@@ -128,11 +127,11 @@ class Tetris
                     .ToList())
                 .ToList();
         }
-
+        
         if (!blocksFalling || !blocksAbove.Any()) return;
         
-        var uniqueBlocksAbove = blocksAbove.Distinct().ToList();
-        ChainReaction(uniqueBlocksAbove, newGrid);
+        var uniqueBlocksAbove = blocksAbove.Distinct().Where(value => !deletedBlocks.Contains(value)).ToList();
+        ChainReaction(uniqueBlocksAbove, newGrid, deletedBlocks);
     }
 
     private void BlocksFall()
@@ -232,7 +231,7 @@ class Tetris
             .ToList();
         return lowestCoordinates;
     }
-
+    
     private List<(int x, int y, int z, int value)> FindBlockCoordinates(int blockEntry)
     {
         if (_blocksLocations.TryGetValue(blockEntry, out var coordinates))
