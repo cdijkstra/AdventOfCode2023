@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-
 namespace LongWalk;
 
 class Program
@@ -8,20 +7,17 @@ class Program
     {
         var maze = new Maze();
         maze.Solve1("dummydata").Should().Be(94);
-        Console.Write(maze.Solve1("data"));
+        Console.WriteLine(maze.Solve1("data"));
         maze.Solve2("dummydata").Should().Be(154);
+        Console.WriteLine(maze.Solve2("data"));
     }
-}
-
-public enum Direction
-{
-    N,S,W,E
 }
 
 class Maze
 {
+    private enum Direction { N,S,W,E }
     private List<List<char>> _grid = new();
-    private List<int> _pathLenths = new();
+    private List<int> _pathLengths = new();
     private readonly List<char> ValidLeft = new() { '.', '<' };
     private readonly List<char> ValidUp = new() { '.', '^' };
     private readonly List<char> ValidRight = new() { '.', '>' };
@@ -30,17 +26,18 @@ class Maze
     private readonly List<char> ValidChars = new() { '.', '<', '^', '>', 'v' };
     private (int x, int y) _startCoordinates = (0, 0);
     private (int x, int y) _endCoordinates = (0, 0);
+    private Dictionary<(int x, int y), List<(int x, int y, int distance)>> _specialPointToSpecialPoints = new();
     
     public int Solve1(string fileName)
     {
         Init(fileName);
         TraversePath(_startCoordinates, 0, Direction.S);
-        return _pathLenths.Max();
+        return _pathLengths.Max();
     }
 
     private void Init(string fileName)
     {
-        _pathLenths = new();
+        _pathLengths = new();
         _grid = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToList())
             .ToList();
@@ -59,7 +56,7 @@ class Maze
             .Concat(new[] { _startCoordinates, _endCoordinates }) // Add start and endpoints also as points of interest
             .ToList();
 
-        Dictionary<(int x, int y), List<(int x, int y, int distance)>> specialPointToSpecialPoints =
+        _specialPointToSpecialPoints =
             crossRoads.ToDictionary(
                 point => (point.x, point.y),
                 point => new List<(int x, int y, int distance)>());
@@ -79,20 +76,40 @@ class Maze
                     if (!crossRoads.Contains(currentPos))
                     {
                         var nextMove = GetValidAdjacentCoordinates(currentPos.x, currentPos.y)
-                            .Where(el => ValidChars.Contains(GetChar(el.x, el.y)) && !visited.Contains(el)).ToList();
+                            .Where(el => ValidChars.Contains(GetChar(el.x, el.y)) && 
+                                         !visited.Contains(el)).ToList();
                         visited.Add(currentPos);
                         currentPos = nextMove[0];
                     }
                     else
                     {
                         continueLoop = false;
-                        specialPointToSpecialPoints[crossRoad].Add((currentPos.x, currentPos.y, steps));
+                        _specialPointToSpecialPoints[crossRoad].Add((currentPos.x, currentPos.y, steps));
                     }
                 }
             }
         }
         
-        return 1;
+        CalculateLengths(_startCoordinates, new() { _startCoordinates }, 0);
+        return _pathLengths.Max();
+    }
+
+    private void CalculateLengths((int x, int y) position, List<(int x, int y)> visited, int totalLength)
+    {
+        var newPoints = _specialPointToSpecialPoints[position].Where(point => !visited.Contains((point.x, point.y)));
+        foreach (var newPoint in newPoints)
+        {
+            if (newPoint.x == _endCoordinates.x && newPoint.y == _endCoordinates.y)
+            {
+                _pathLengths.Add(totalLength + newPoint.distance);
+            }
+            else
+            {
+                var newVisited = new List<(int x, int y)>(visited);
+                newVisited.Add((newPoint.x, newPoint.y));
+                CalculateLengths((newPoint.x, newPoint.y), newVisited, totalLength + newPoint.distance);
+            }
+        }
     }
     
     private char GetChar(int i, int j)
@@ -133,7 +150,7 @@ class Maze
     {
         if (coordinates == _endCoordinates)
         {
-            _pathLenths.Add(steps);
+            _pathLengths.Add(steps);
             return;
         }
         
