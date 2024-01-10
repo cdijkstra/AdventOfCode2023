@@ -9,6 +9,7 @@ class Program
         var maze = new Maze();
         maze.Solve1("dummydata").Should().Be(94);
         Console.Write(maze.Solve1("data"));
+        maze.Solve2("dummydata").Should().Be(154);
     }
 }
 
@@ -25,20 +26,107 @@ class Maze
     private readonly List<char> ValidUp = new() { '.', '^' };
     private readonly List<char> ValidRight = new() { '.', '>' };
     private readonly List<char> ValidDown = new() { '.', 'v' };
-    private (int, int) _endCoordinates = (0, 0);
+    
+    private readonly List<char> ValidChars = new() { '.', '<', '^', '>', 'v' };
+    private (int x, int y) _startCoordinates = (0, 0);
+    private (int x, int y) _endCoordinates = (0, 0);
     
     public int Solve1(string fileName)
     {
+        Init(fileName);
+        TraversePath(_startCoordinates, 0, Direction.S);
+        return _pathLenths.Max();
+    }
+
+    private void Init(string fileName)
+    {
+        _pathLenths = new();
         _grid = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToList())
             .ToList();
 
-        var startIndex = (0, _grid[0].IndexOf('.'));
+        _startCoordinates = (0, _grid[0].IndexOf('.'));
         _endCoordinates = (_grid.Count - 1, _grid[^1].IndexOf('.'));
+    }
 
-        TraversePath(startIndex, 0, Direction.S);
+    public int Solve2(string fileName)
+    {
+        Init(fileName);
+
+        var crossRoads = Enumerable.Range(0, _grid.Count)
+            .SelectMany(x => Enumerable.Range(0, _grid[0].Count), (x, y) => (x, y))
+            .Where(el => _grid[el.x][el.y] == '.' && GetAdjacentChars(el.x, el.y).Count(el => ValidChars.Contains(el)) >= 3)
+            .Concat(new[] { _startCoordinates, _endCoordinates }) // Add start and endpoints also as points of interest
+            .ToList();
+
+        Dictionary<(int x, int y), List<(int x, int y, int distance)>> specialPointToSpecialPoints =
+            crossRoads.ToDictionary(
+                point => (point.x, point.y),
+                point => new List<(int x, int y, int distance)>());
         
-        return _pathLenths.Max();
+        foreach ((int x, int y) crossRoad in crossRoads)
+        {
+            foreach (var neighbor in GetValidAdjacentCoordinates(crossRoad.x, crossRoad.y)
+                         .Where(el => ValidChars.Contains(GetChar(el.x, el.y))))
+            {
+                List<(int x, int y)> visited = new() { crossRoad };
+                var continueLoop = true;
+                var steps = 0;
+                var currentPos = neighbor;
+                while (continueLoop)
+                {
+                    steps++;
+                    if (!crossRoads.Contains(currentPos))
+                    {
+                        var nextMove = GetValidAdjacentCoordinates(currentPos.x, currentPos.y)
+                            .Where(el => ValidChars.Contains(GetChar(el.x, el.y)) && !visited.Contains(el)).ToList();
+                        visited.Add(currentPos);
+                        currentPos = nextMove[0];
+                    }
+                    else
+                    {
+                        continueLoop = false;
+                        specialPointToSpecialPoints[crossRoad].Add((currentPos.x, currentPos.y, steps));
+                    }
+                }
+            }
+        }
+        
+        return 1;
+    }
+    
+    private char GetChar(int i, int j)
+    {
+        // Helper method to safely get a point from the grid
+        return i >= 0 && i < _grid.Count && j >= 0 && j < _grid[0].Count ? _grid[i][j] : 'X';
+    }
+
+    private char[] GetAdjacentChars(int i, int j)
+    {
+        // Get characters of adjacent points in the grid
+        return new[]
+        {
+            GetChar(i - 1, j), // Up
+            GetChar(i + 1, j), // Down
+            GetChar(i, j - 1), // Left
+            GetChar(i, j + 1)  // Right
+        };
+    }
+    
+    private List<(int x, int y)> GetValidAdjacentCoordinates(int i, int j)
+    {
+        List<(int x, int y)> coors = new();
+        (int x, int y)[] directions = { (-1, 0), (1, 0), (0, -1), (0, 1) };
+
+        foreach (var direction in directions)
+        {
+            int xNeighbor = i + direction.x;
+            int yNeighbor = j + direction.y;
+            if (GetChar(xNeighbor, yNeighbor) == 'X') continue;
+            coors.Add((xNeighbor, yNeighbor));
+        }
+
+        return coors;
     }
 
     private void TraversePath((int x, int y) coordinates, int steps, Direction direction)
@@ -100,6 +188,30 @@ class Maze
     private void CheckDown((int x, int y) downCoordinates, int steps)
     {
         if (downCoordinates.x > _grid.Count - 1 || !ValidDown.Contains(_grid[downCoordinates.x][downCoordinates.y])) return;
+        TraversePath(downCoordinates, steps + 1, Direction.S);
+    }
+    
+    private void CheckLeft2((int x, int y) leftCoordinates, int steps)
+    {
+        if (leftCoordinates.y < 0 || !ValidChars.Contains(_grid[leftCoordinates.x][leftCoordinates.y])) return;
+        TraversePath(leftCoordinates, steps + 1, Direction.W);
+    }
+    
+    private void CheckRight2((int x, int y) rightCoordinates, int steps)
+    {
+        if (rightCoordinates.y > _grid[0].Count - 1 || !ValidChars.Contains(_grid[rightCoordinates.x][rightCoordinates.y])) return;
+        TraversePath(rightCoordinates, steps + 1, Direction.E);
+    }
+    
+    private void CheckUp2((int x, int y) upCoordinates, int steps)
+    {
+        if (upCoordinates.x < 0 || !ValidChars.Contains(_grid[upCoordinates.x][upCoordinates.y])) return;
+        TraversePath(upCoordinates, steps + 1, Direction.N);
+    }
+    
+    private void CheckDown2((int x, int y) downCoordinates, int steps)
+    {
+        if (downCoordinates.x > _grid.Count - 1 || !ValidChars.Contains(_grid[downCoordinates.x][downCoordinates.y])) return;
         TraversePath(downCoordinates, steps + 1, Direction.S);
     }
 }
