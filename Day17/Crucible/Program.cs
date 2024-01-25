@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using FluentAssertions;
-namespace Crucible;
+﻿namespace Crucible;
 
 class Program
 {
@@ -17,15 +15,13 @@ class Crucible
     private List<List<int>> _heatLosses = new();
     private record Vertex(int X, int Y, int Direction, int StepsRemaining);
     private enum Direction { Up = 0, Right = 1, Down = 2, Left = 3 }
-
     private static readonly int MaxStepsRemaining = 2;
     
     public void Solve1(string fileName)
     {
-        var grid = File.ReadAllLines($"Data/{fileName}")
+        _heatLosses = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToCharArray()).ToList()
-            .ToList();
-        _heatLosses = grid.Select((numbers, rowIndex) =>
+            .Select((numbers, rowIndex) =>
             numbers.Select((heatLoss, colIndex) =>
                 int.Parse(heatLoss.ToString())
             ).ToList()
@@ -35,22 +31,19 @@ class Crucible
         var maxY = _heatLosses[0].Count - 1;
         
         var visited = new HashSet<Vertex>();
-        var distances = new Dictionary<Vertex, int>();
+        var totalHeatLoss = new Dictionary<Vertex, int>();
         
         var startingVertex = new Vertex(0, 0, 0, 3);
-        distances[startingVertex] = 0;
+        totalHeatLoss[startingVertex] = 0;
 
         var priorityQueue = new PriorityQueue<Vertex, int>();
-        priorityQueue.Enqueue(startingVertex, 0);
+        priorityQueue.Enqueue(startingVertex, totalHeatLoss[startingVertex]);
         while (priorityQueue.Count > 0)
         {
             var current = priorityQueue.Dequeue();
-            if (visited.Contains(current))
-            {
-                continue;
-            }
+            if (visited.Contains(current)) continue;
 
-            var distance = distances.GetValueOrDefault(current, int.MaxValue);
+            var distance = totalHeatLoss.GetValueOrDefault(current, int.MaxValue);
             
             // -1 and +1 mean change direction, 0 same direction
             var validNeighbors = Enumerable.Range(-1, 3)
@@ -61,9 +54,9 @@ class Crucible
             {
                 if (visited.Contains(neighbor)) continue;
                 
-                var neighborDistance = distances.GetValueOrDefault(neighbor, int.MaxValue);
-                distances[neighbor] = Math.Min(neighborDistance, distance + _heatLosses[neighbor.X][neighbor.Y]);
-                priorityQueue.Enqueue(neighbor, distances[neighbor]);
+                var neighborDistance = totalHeatLoss.GetValueOrDefault(neighbor, int.MaxValue);
+                totalHeatLoss[neighbor] = Math.Min(neighborDistance, distance + _heatLosses[neighbor.X][neighbor.Y]);
+                priorityQueue.Enqueue(neighbor, totalHeatLoss[neighbor]);
             }
 
             if (current.X == maxX && current.Y == maxY)
