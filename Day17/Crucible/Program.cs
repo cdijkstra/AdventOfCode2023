@@ -1,11 +1,13 @@
-﻿namespace Crucible;
+﻿using FluentAssertions;
+
+namespace Crucible;
 
 class Program
 {
     static void Main(string[] args)
     {
         var crucible = new Crucible();
-        crucible.Solve1("dummydata");
+        crucible.Solve1("dummydata").Should().Be(102);
         crucible.Solve1("data");
     }
 }
@@ -17,7 +19,7 @@ class Crucible
     private enum Direction { Up = 0, Right = 1, Down = 2, Left = 3 }
     private static readonly int MaxStepsRemaining = 2;
     
-    public void Solve1(string fileName)
+    public int Solve1(string fileName)
     {
         _heatLosses = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToCharArray()).ToList()
@@ -59,14 +61,13 @@ class Crucible
                 priorityQueue.Enqueue(neighbor, totalHeatLoss[neighbor]);
             }
 
-            if (current.X == maxX && current.Y == maxY)
-            {
-                Console.WriteLine(distance);
-                return;
-            }
-
             visited.Add(current);
+            if (current.X != maxX || current.Y != maxY) continue;
+            
+            Console.WriteLine(distance);
+            return distance;
         }
+        return -1;
     }
 
     private Func<Vertex, bool> ValidEntry()
