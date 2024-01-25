@@ -11,7 +11,8 @@ class Program
         // crucible.Solve1("data", 3);
         crucible.Solve2("dummydata", 10).Should().Be(94);
         crucible.Solve2("dummydata2", 10).Should().Be(71);
-        // crucible.Solve2("data", 10);
+        crucible.Solve2("data", 10);
+        // 936 is too high
     }
 }
 
@@ -106,10 +107,10 @@ class Crucible
 
             var distance = totalHeatLoss.GetValueOrDefault(current, int.MaxValue);
             
-            // -1 and +1 mean change direction, 0 same direction
+            // -1 and +1 mean change direction, 0 same direction.
+            // So Enumerable.Range(0,1) means go straight
             var allNeighbors = current.StepsRemaining > MaxSteps - 4
-                ? Enumerable.Range(0, 1)
-                    .Select(directionChange => StepCrucible(current, directionChange))
+                ? Enumerable.Repeat(StepCrucible(current, 0), 1)
                 : Enumerable.Range(-1, 3)
                     .Select(directionChange => StepCrucible(current, directionChange));
             
@@ -119,8 +120,8 @@ class Crucible
             {
                 if (visited.Contains(neighbor)) continue;
                 
-                var neighborDistance = totalHeatLoss.GetValueOrDefault(neighbor, int.MaxValue);
-                totalHeatLoss[neighbor] = Math.Min(neighborDistance, distance + _heatLosses[neighbor.X][neighbor.Y]);
+                var neighborHeatloss = totalHeatLoss.GetValueOrDefault(neighbor, int.MaxValue);
+                totalHeatLoss[neighbor] = Math.Min(neighborHeatloss, distance + _heatLosses[neighbor.X][neighbor.Y]);
                 priorityQueue.Enqueue(neighbor, totalHeatLoss[neighbor]);
             }
 
