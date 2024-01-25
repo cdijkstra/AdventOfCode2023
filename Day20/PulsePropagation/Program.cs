@@ -11,18 +11,20 @@ class Program
     }
 }
 
-class Flipflop
+class Module
 {
     public string Name { get; set; }
-    public bool On { get; set; }
     public List<string> SendTo { get; set; }
 }
 
-class Conjuction
+class Flipflop : Module
 {
-    public string Name { get; set; }
-    public bool High { get; set; }
-    public List<string> SendTo { get; set; }
+    public bool On { get; set; } = false;
+}
+
+class Conjuction : Module
+{
+    public Dictionary<string, bool> InputHigh = new();
 }
 
 class Pulse
@@ -40,8 +42,8 @@ class Pulse
             return new Flipflop
             {
                 Name = name,
+                SendTo = sendTo,
                 On = false,
-                SendTo = sendTo
             };
         }).ToList();
         _conjuctions = content.Where(line => line.StartsWith("&")).Select(entry =>
@@ -52,34 +54,49 @@ class Pulse
             return new Conjuction()
             {
                 Name = name,
-                High = false,
-                SendTo = sendTo
+                SendTo = sendTo,
             };
         }).ToList();
 
-        var broadcasterSendTo = content.Single(line => line.StartsWith("broadcaster")).Split("-> ")[1].Split(",").Select(entry => entry.Trim()).ToList(); 
-        var initialPulseHigh = false;
-        SendPulses(broadcasterSendTo, initialPulseHigh);
-        return 1;
+        foreach (var conjunction in _conjuctions)
+        {
+            conjunction.InputHigh = _flipflops
+                .Where(ff => ff.SendTo.Contains(conjunction.Name))
+                .Select(ff => ff.Name)
+                .Concat(_conjuctions
+                    .Where(cj => cj.SendTo.Contains(conjunction.Name))
+                    .Select(cj => cj.Name)
+                ).ToDictionary(entry => entry, entry => false);
+        }
+
+        var broadcaster = "broadcaster";
+        
+        var broadcasterSendTo = content.Single(line => line.StartsWith(broadcaster)).Split("-> ")[1].Split(",").Select(entry => entry.Trim()).ToList();
+        Queue<(string, bool)> sendSignal = new();
+        foreach (var entry in broadcasterSendTo)
+        {
+            sendSignal.Enqueue((entry, false));
+        }
+        
+        
     }
 
-    private void SendPulses(List<string> sendTos, bool high)
+    private void SendPulses(string name, List<string> sendTos, bool high)
     {
         foreach (var sendTo in sendTos)
         {
             if (_conjuctions.Any(x => x.Name == sendTo))
             {
+                // Conjuction
                 var conjuction = _conjuctions.Single(x => x.Name == sendTo);
-                conjuction.High = !high;
-                SendPulses(conjuction.SendTo, conjuction.High);
+                SendPulses(sendTo, conjuction.SendTo, high);
             }
             else
             {
-                if (high) continue;
-                
+                // Flipflop
                 var flipflop = _flipflops.Single(x => x.Name == sendTo);
                 flipflop.On = !flipflop.On;
-                SendPulses(flipflop.SendTo, flipflop.On);
+                SendPulses(sendTo, flipflop.SendTo, high);
             }
         }
     }

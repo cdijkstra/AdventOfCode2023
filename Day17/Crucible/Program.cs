@@ -6,182 +6,110 @@ class Program
     static void Main(string[] args)
     {
         var crucible = new Crucible();
-        crucible.Solve1("dummydata").Should().Be(102);
-        Console.WriteLine(crucible.Solve1("data"));
+        crucible.Solve1("dummydata");
+        crucible.Solve1("data");
     }
-}
-
-public enum Direction
-{
-    N,S,E,W,Unknown
-}
-
-public class Entry
-{
-    public int X { get; set; }
-    public int Y { get; set; }
-    public int HeatLoss { get; set; }
-    public int TotalHeatLoss { get; set; }
-    public Direction Direction { get; set; }
-    public int DirectionRepeat { get; set; } // Max 3
-    public List<Entry> History { get; set; } = new();
 }
 
 class Crucible
 {
-    private List<List<Entry>> _entries = new();
+    private List<List<int>> _heatLosses = new();
+    private record Vertex(int X, int Y, int Direction, int StepsRemaining);
+    private enum Direction { Up = 0, Right = 1, Down = 2, Left = 3 }
+
+    private static readonly int MaxStepsRemaining = 2;
     
-    public int Solve1(string fileName)
+    public void Solve1(string fileName)
     {
         var grid = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToCharArray()).ToList()
             .ToList();
-        _entries = grid.Select((numbers, rowIndex) =>
+        _heatLosses = grid.Select((numbers, rowIndex) =>
             numbers.Select((heatLoss, colIndex) =>
-                new Entry
-                {
-                    X = rowIndex,
-                    Y = colIndex,
-                    HeatLoss = heatLoss - '0',
-                    TotalHeatLoss = 0,
-                    Direction = Direction.Unknown
-                }
+                int.Parse(heatLoss.ToString())
             ).ToList()
         ).ToList();
 
-        Entry initialEntry = new Entry()
+        var maxX = _heatLosses.Count - 1;
+        var maxY = _heatLosses[0].Count - 1;
+        
+        var visited = new HashSet<Vertex>();
+        var distances = new Dictionary<Vertex, int>();
+        var entriesToConsider = new HashSet<Vertex>();
+        
+        var startingVertex = new Vertex(0, 0, 0, 3);
+        distances[startingVertex] = 0;
+        entriesToConsider.Add(startingVertex);
+        
+        while (entriesToConsider.Count > 0)
         {
-            X = 0,
-            Y = 0,
-            TotalHeatLoss = 0,
-            Direction = Direction.Unknown
-        };
-        PriorityQueue<Entry, int> queue = new();
-        queue.Enqueue(initialEntry, 0);
-
-        List<Entry> visited = new() { initialEntry };
-        var maxX = _entries.Count - 1;
-        var maxY = _entries[1].Count - 1;
-        while (queue.Count > 0)
-        {
-            var entry = queue.Dequeue();
-            Console.WriteLine($"{entry.TotalHeatLoss} at ({entry.X},{entry.Y})");
-            foreach (var neighbor in FindValidMoves(entry))
+            var current = entriesToConsider.OrderBy(v => distances[v]).First();
+            entriesToConsider.Remove(current);
+            if (visited.Contains(current))
             {
-                if (neighbor.X == maxX && neighbor.Y == maxY)
-                {
-                    return neighbor.TotalHeatLoss;
-                }
-                
-                var visitedEntry = visited.Where(visitedEntry => 
-                    visitedEntry.X == neighbor.X && visitedEntry.Y == neighbor.Y && 
-                    visitedEntry.Direction == neighbor.Direction && visitedEntry.DirectionRepeat == neighbor.DirectionRepeat);
-                if (visitedEntry.Any(en => en.TotalHeatLoss < neighbor.TotalHeatLoss)) continue;
-                
-                // Take sooner from queue for closer to solution;
-                var priority = neighbor.TotalHeatLoss + 4 * (maxX - neighbor.X + maxY - neighbor.Y);
-                queue.Enqueue(neighbor, priority);
-                visited.Add(neighbor);
+                continue;
             }
-        }
 
-        return -1;
+            var distance = distances.GetValueOrDefault(current, int.MaxValue);
+            
+            // -1 and +1 mean change direction, 0 same direction
+            var validNeighbors = Enumerable.Range(-1, 3)
+                .Select(directionChange => Step(current, directionChange))
+                .Where(ValidEntry());
+            
+            foreach (var neighbor in validNeighbors)
+            {
+                if (visited.Contains(neighbor)) continue;
+                
+                var neighborDistance = distances.GetValueOrDefault(neighbor, int.MaxValue);
+                distances[neighbor] = Math.Min(neighborDistance, distance + _heatLosses[neighbor.X][neighbor.Y]);
+                entriesToConsider.Add(neighbor);
+            }
+
+            if (current.X == maxX && current.Y == maxY)
+            {
+                Console.WriteLine(distance);
+                return;
+            }
+
+            visited.Add(current);
+        }
     }
 
-    private List<Entry> FindValidMoves(Entry entry)
+    private Func<Vertex, bool> ValidEntry()
     {
-        List<Entry> neighbors = new();
-        if (entry.X > 0 && entry.Direction != Direction.S) //  && entry.Direction != Direction.S
-        { // Moving north, not allowed from previous south
-            var newEntry = new Entry()
-            {
-                X = entry.X - 1,
-                Y = entry.Y,
-                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X - 1][entry.Y].HeatLoss,
-                Direction = Direction.N
-            };
-            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
-            
-            if (entry is { Direction: Direction.N, DirectionRepeat: <= 2 })
-            {
-                newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry.Direction != Direction.N)
-            {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-        }
-        if (entry.X < _entries.Count - 1 && entry.Direction != Direction.N)
-        {
-            // Moving south, not allowed from previous north
-            var newEntry = new Entry()
-            {
-                X = entry.X + 1,
-                Y = entry.Y,
-                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X + 1][entry.Y].HeatLoss,
-                Direction = Direction.S
-            };
-            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
-            if (entry is { Direction: Direction.S, DirectionRepeat: <= 2 })
-            {
-                newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry.Direction != Direction.S)
-            {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-        }
-        if (entry.Y > 0 && entry.Direction != Direction.E)
-        {
-            // Moving west, not allowed from previous east
-            var newEntry = new Entry()
-            {
-                X = entry.X,
-                Y = entry.Y - 1,
-                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X][entry.Y - 1].HeatLoss,
-                Direction = Direction.W
-            };
-            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
+        return newVertex => 0 <= newVertex.X && newVertex.X < _heatLosses.Count &&
+                            0 <= newVertex.Y && newVertex.Y < _heatLosses[0].Count &&
+                            newVertex.StepsRemaining >= 0;
+    }
 
-            if (entry is { Direction: Direction.W, DirectionRepeat: <= 2 })
-            {
-                newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry.Direction != Direction.W)
-            {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-        }
-        if (entry.Y < _entries[0].Count - 1 && entry.Direction != Direction.W)
+    private static Vertex Step(Vertex vertex, int directionChange)
+    {
+        var directionNumber = (vertex.Direction + directionChange + 4) % 4;
+        Direction newDirection = (Direction)directionNumber;
+        
+        var xDelta = newDirection switch
         {
-            // Moving east, not allowed from previous west
-            var newEntry = new Entry()
-            {
-                X = entry.X,
-                Y = entry.Y + 1,
-                TotalHeatLoss = entry.TotalHeatLoss + _entries[entry.X][entry.Y + 1].HeatLoss,
-                Direction = Direction.E
-            };
-            newEntry.History = entry.History.Concat(new List<Entry> { newEntry }).ToList();
-            
-            if (entry is { Direction: Direction.E, DirectionRepeat: <= 2 })
-            {
-                newEntry.DirectionRepeat = entry.DirectionRepeat + 1;
-                neighbors.Add(newEntry);
-            }
-            else if (entry.Direction != Direction.E)
-            {
-                newEntry.DirectionRepeat = 1;
-                neighbors.Add(newEntry);
-            }
-        }
-
-        return neighbors;
+            Direction.Up => 0,
+            Direction.Right => 1,
+            Direction.Down => 0,
+            Direction.Left => -1
+        };
+        var yDelta = newDirection switch
+        {
+            Direction.Up => 1,
+            Direction.Right => 0,
+            Direction.Down => -1,
+            Direction.Left => 0
+        };
+        
+        var newVertex = vertex with
+        {
+            X = vertex.X + xDelta,
+            Y = vertex.Y + yDelta,
+            Direction = directionNumber,
+            StepsRemaining = vertex.Direction == directionNumber ? vertex.StepsRemaining - 1 : MaxStepsRemaining
+        };
+        return newVertex;
     }
 }
