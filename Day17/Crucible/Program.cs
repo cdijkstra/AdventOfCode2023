@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using System.Collections;
+using FluentAssertions;
 namespace Crucible;
 
 class Program
@@ -35,16 +36,15 @@ class Crucible
         
         var visited = new HashSet<Vertex>();
         var distances = new Dictionary<Vertex, int>();
-        var entriesToConsider = new HashSet<Vertex>();
         
         var startingVertex = new Vertex(0, 0, 0, 3);
         distances[startingVertex] = 0;
-        entriesToConsider.Add(startingVertex);
-        
-        while (entriesToConsider.Count > 0)
+
+        var priorityQueue = new PriorityQueue<Vertex, int>();
+        priorityQueue.Enqueue(startingVertex, 0);
+        while (priorityQueue.Count > 0)
         {
-            var current = entriesToConsider.OrderBy(v => distances[v]).First();
-            entriesToConsider.Remove(current);
+            var current = priorityQueue.Dequeue();
             if (visited.Contains(current))
             {
                 continue;
@@ -63,7 +63,7 @@ class Crucible
                 
                 var neighborDistance = distances.GetValueOrDefault(neighbor, int.MaxValue);
                 distances[neighbor] = Math.Min(neighborDistance, distance + _heatLosses[neighbor.X][neighbor.Y]);
-                entriesToConsider.Add(neighbor);
+                priorityQueue.Enqueue(neighbor, distances[neighbor]);
             }
 
             if (current.X == maxX && current.Y == maxY)
