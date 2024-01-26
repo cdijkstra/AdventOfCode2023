@@ -7,12 +7,12 @@ class Program
     static void Main(string[] args)
     {
         var crucible = new Crucible();
-        // crucible.Solve1("dummydata", 3).Should().Be(102);
-        // crucible.Solve1("data", 3);
+        crucible.Solve1("dummydata", 3).Should().Be(102);
+        crucible.Solve1("data", 3);
         crucible.Solve2("dummydata", 10).Should().Be(94);
         crucible.Solve2("dummydata2", 10).Should().Be(71);
         crucible.Solve2("data", 10);
-        // 936 is too high
+        // 931 is too high
     }
 }
 
@@ -95,11 +95,16 @@ class Crucible
         var visited = new HashSet<Vertex>();
         var totalHeatLoss = new Dictionary<Vertex, int>();
         
+        // Start explicitly in both possible directions, due to constraint of not turning before 4 steps
         var startingVertex = new Vertex(0, 0, 0, maxSteps);
+        var startingVertex2 = new Vertex(0, 0, 1, maxSteps);
         totalHeatLoss[startingVertex] = 0;
+        totalHeatLoss[startingVertex2] = 0;
 
         var priorityQueue = new PriorityQueue<Vertex, int>();
         priorityQueue.Enqueue(startingVertex, totalHeatLoss[startingVertex]);
+        priorityQueue.Enqueue(startingVertex2, totalHeatLoss[startingVertex2]);
+        
         while (priorityQueue.Count > 0)
         {
             var current = priorityQueue.Dequeue();
