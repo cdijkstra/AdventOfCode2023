@@ -127,7 +127,7 @@ class Pulse
                         bnSourcesCycles[signal.ModuleName] = buttonPresses;
                     }
                     
-                    if (buttonPresses == amountOfTimesSeen[signal.ModuleName] * bnSourcesCycles[signal.ModuleName])
+                    if (buttonPresses != amountOfTimesSeen[signal.ModuleName] * bnSourcesCycles[signal.ModuleName])
                     {
                         throw new Exception("Assumption of cyclicity violated");
                     }
