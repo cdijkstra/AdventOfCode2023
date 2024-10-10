@@ -20,7 +20,7 @@ class Crucible
 {
     private List<List<int>> _heatLosses = new();
     private record Vertex(int X, int Y, int Direction, int StepsRemaining);
-    private enum Direction { Up = 0, Right = 1, Down = 2, Left = 3 }
+    private enum Direction { Right = 0, Down = 1, Left = 2, Up = 3 }
     private int MaxSteps;
     
     public int Solve1(string fileName, int maxSteps)
@@ -153,17 +153,17 @@ class Crucible
         
         var xDelta = newDirection switch
         {
-            Direction.Up => 0,
-            Direction.Right => 1,
-            Direction.Down => 0,
-            Direction.Left => -1
+            Direction.Right => 0,
+            Direction.Down => 1,
+            Direction.Left => 0,
+            Direction.Up => -1
         };
         var yDelta = newDirection switch
         {
-            Direction.Up => 1,
-            Direction.Right => 0,
-            Direction.Down => -1,
-            Direction.Left => 0
+            Direction.Right => 1,
+            Direction.Down => 0,
+            Direction.Left => -1,
+            Direction.Up => 0
         };
         
         var newVertex = vertex with
