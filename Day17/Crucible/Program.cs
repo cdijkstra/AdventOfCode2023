@@ -53,7 +53,7 @@ class Crucible
 
             var distance = totalHeatLoss.GetValueOrDefault(current, int.MaxValue);
             
-            // -1 and +1 mean change direction, 0 same direction
+            // -1 and +1 mean change direction (anti-clockwise and clockwise); 0 means same direction
             var allNeighbors = Enumerable.Range(-1, 3)
                 .Select(directionChange => StepCrucible(current, directionChange));
             
@@ -145,16 +145,10 @@ class Crucible
                             0 <= newVertex.Y && newVertex.Y < _heatLosses[0].Count &&
                             newVertex.StepsRemaining >= 0;
     }
-
-    private Direction ObtainNewDirection(Direction direction, int directionChange)
-    {
-        int enumValDirection = (int)direction; 
-        var directionNumber = (enumValDirection + directionChange + 4) % 4;
-        return (Direction)directionNumber;
-    }
     
     private Vertex StepCrucible(Vertex vertex, int directionChange)
     {
+        // Obtain the new position on the vertex. We'll check later if it is valid
         Direction newDirection = ObtainNewDirection(vertex.Direction, directionChange);
         
         var xDelta = newDirection switch
@@ -180,5 +174,12 @@ class Crucible
             StepsRemaining = vertex.Direction == newDirection ? vertex.StepsRemaining - 1 : MaxSteps - 1
         };
         return newVertex;
+    }
+    
+    private Direction ObtainNewDirection(Direction currentDirection, int directionChange)
+    {
+        var directionCount = Enum.GetValues(typeof(Direction)).Length;
+        var directionNumber = ((int)currentDirection + directionChange + directionCount) % directionCount;
+        return (Direction)directionNumber;
     }
 }
