@@ -9,9 +9,9 @@ class Program
         var crucible = new Crucible();
         crucible.Solve1("dummydata", 3).Should().Be(102);
         crucible.Solve1("data", 3);
-        crucible.Solve2("dummydata", 10).Should().Be(94);
-        crucible.Solve2("dummydata2", 10).Should().Be(71);
-        crucible.Solve2("data", 10);
+        crucible.Solve2("dummydata", 4, 10).Should().Be(94);
+        crucible.Solve2("dummydata2", 4, 10).Should().Be(71);
+        crucible.Solve2("data", 4, 10);
     }
 }
 
@@ -20,11 +20,11 @@ class Crucible
     private List<List<int>> _heatLosses = new();
     private record Vertex(int X, int Y, Direction Direction, int StepsRemaining);
     private enum Direction { Right = 0, Down = 1, Left = 2, Up = 3 }
-    private int MaxSteps;
+    private int _maxSteps;
     
     public int Solve1(string fileName, int maxSteps)
     {
-        MaxSteps = maxSteps;
+        _maxSteps = maxSteps;
         
         _heatLosses = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToCharArray()).ToList()
@@ -40,11 +40,15 @@ class Crucible
         var visited = new HashSet<Vertex>();
         var totalHeatLoss = new Dictionary<Vertex, int>();
         
-        var startingVertex = new Vertex(0, 0, 0, maxSteps);
-        totalHeatLoss[startingVertex] = 0;
-
         var priorityQueue = new PriorityQueue<Vertex, int>();
-        priorityQueue.Enqueue(startingVertex, totalHeatLoss[startingVertex]);
+
+        foreach (var startingDirection in new[] { Direction.Right, Direction.Down })
+        {
+            var startingVertex = new Vertex(0, 0, startingDirection, maxSteps);
+            totalHeatLoss[startingVertex] = 0;
+            priorityQueue.Enqueue(startingVertex, totalHeatLoss[startingVertex]);
+        }
+
         while (priorityQueue.Count > 0)
         {
             var current = priorityQueue.Dequeue();
@@ -76,9 +80,9 @@ class Crucible
         return -1;
     }
     
-    public int Solve2(string fileName, int maxSteps)
+    public int Solve2(string fileName, int minSteps, int maxSteps)
     {
-        MaxSteps = maxSteps;
+        _maxSteps = maxSteps;
         
         _heatLosses = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToCharArray()).ToList()
@@ -94,15 +98,13 @@ class Crucible
         var visited = new HashSet<Vertex>();
         var totalHeatLoss = new Dictionary<Vertex, int>();
         
-        // Start explicitly in both possible directions, due to constraint of not turning before 4 steps
-        var startingVertex = new Vertex(0, 0, Direction.Right, maxSteps);
-        var startingVertex2 = new Vertex(0, 0, Direction.Down, maxSteps);
-        totalHeatLoss[startingVertex] = 0;
-        totalHeatLoss[startingVertex2] = 0;
-
         var priorityQueue = new PriorityQueue<Vertex, int>();
-        priorityQueue.Enqueue(startingVertex, totalHeatLoss[startingVertex]);
-        priorityQueue.Enqueue(startingVertex2, totalHeatLoss[startingVertex2]);
+        foreach (var startingDirection in new[] { Direction.Right, Direction.Down })
+        {
+            var startingVertex = new Vertex(0, 0, startingDirection, maxSteps);
+            totalHeatLoss[startingVertex] = 0;
+            priorityQueue.Enqueue(startingVertex, totalHeatLoss[startingVertex]);
+        }
         
         while (priorityQueue.Count > 0)
         {
@@ -113,7 +115,7 @@ class Crucible
             
             // -1 and +1 mean change direction, 0 same direction.
             // So Enumerable.Range(0,1) means go straight
-            var allNeighbors = current.StepsRemaining > MaxSteps - 4
+            var allNeighbors = current.StepsRemaining > _maxSteps - minSteps
                 ? Enumerable.Repeat(StepCrucible(current, 0), 1)
                 : Enumerable.Range(-1, 3)
                     .Select(directionChange => StepCrucible(current, directionChange));
@@ -130,7 +132,7 @@ class Crucible
             }
 
             visited.Add(current);
-            if (current.X != maxX || current.Y != maxY || current.StepsRemaining > MaxSteps - 4) continue;
+            if (current.X != maxX || current.Y != maxY || current.StepsRemaining > _maxSteps - minSteps) continue;
             
             Console.WriteLine(distance);
             return distance;
@@ -165,7 +167,7 @@ class Crucible
         {
             X = vertex.X + xDelta, Y = vertex.Y + yDelta,
             Direction = newDirection,
-            StepsRemaining = vertex.Direction == newDirection ? vertex.StepsRemaining - 1 : MaxSteps - 1
+            StepsRemaining = vertex.Direction == newDirection ? vertex.StepsRemaining - 1 : _maxSteps - 1
         };
         return newVertex;
     }
