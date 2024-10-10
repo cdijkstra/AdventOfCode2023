@@ -7,11 +7,11 @@ class Program
     static void Main(string[] args)
     {
         var crucible = new Crucible();
-        crucible.Solve1("dummydata", 3).Should().Be(102);
-        crucible.Solve1("data", 3);
-        crucible.Solve2("dummydata", 4, 10).Should().Be(94);
-        crucible.Solve2("dummydata2", 4, 10).Should().Be(71);
-        crucible.Solve2("data", 4, 10);
+        crucible.Solve("dummydata", 0, 3).Should().Be(102);
+        crucible.Solve("data", 0, 3);
+        crucible.Solve("dummydata", 4, 10).Should().Be(94);
+        crucible.Solve("dummydata2", 4, 10).Should().Be(71);
+        crucible.Solve("data", 4, 10);
     }
 }
 
@@ -22,65 +22,7 @@ class Crucible
     private enum Direction { Right = 0, Down = 1, Left = 2, Up = 3 }
     private int _maxSteps;
     
-    public int Solve1(string fileName, int maxSteps)
-    {
-        _maxSteps = maxSteps;
-        
-        _heatLosses = File.ReadAllLines($"Data/{fileName}")
-            .Select(line => line.ToCharArray()).ToList()
-            .Select((numbers, rowIndex) =>
-            numbers.Select((heatLoss, colIndex) =>
-                int.Parse(heatLoss.ToString())
-            ).ToList()
-        ).ToList();
-
-        var maxX = _heatLosses.Count - 1;
-        var maxY = _heatLosses[0].Count - 1;
-        
-        var visited = new HashSet<Vertex>();
-        var totalHeatLoss = new Dictionary<Vertex, int>();
-        
-        var priorityQueue = new PriorityQueue<Vertex, int>();
-
-        foreach (var startingDirection in new[] { Direction.Right, Direction.Down })
-        {
-            var startingVertex = new Vertex(0, 0, startingDirection, maxSteps);
-            totalHeatLoss[startingVertex] = 0;
-            priorityQueue.Enqueue(startingVertex, totalHeatLoss[startingVertex]);
-        }
-
-        while (priorityQueue.Count > 0)
-        {
-            var current = priorityQueue.Dequeue();
-            if (visited.Contains(current)) continue;
-
-            var distance = totalHeatLoss.GetValueOrDefault(current, int.MaxValue);
-            
-            // -1 and +1 mean change direction (anti-clockwise and clockwise); 0 means same direction
-            var allNeighbors = Enumerable.Range(-1, 3)
-                .Select(directionChange => StepCrucible(current, directionChange));
-            
-            var validNeighbors = allNeighbors.Where(ValidEntryCrucible());
-            
-            foreach (var neighbor in validNeighbors)
-            {
-                if (visited.Contains(neighbor)) continue;
-                
-                var neighborDistance = totalHeatLoss.GetValueOrDefault(neighbor, int.MaxValue);
-                totalHeatLoss[neighbor] = Math.Min(neighborDistance, distance + _heatLosses[neighbor.X][neighbor.Y]);
-                priorityQueue.Enqueue(neighbor, totalHeatLoss[neighbor]);
-            }
-
-            visited.Add(current);
-            if (current.X != maxX || current.Y != maxY) continue;
-            
-            Console.WriteLine(distance);
-            return distance;
-        }
-        return -1;
-    }
-    
-    public int Solve2(string fileName, int minSteps, int maxSteps)
+    public int Solve(string fileName, int minSteps, int maxSteps)
     {
         _maxSteps = maxSteps;
         
@@ -163,13 +105,11 @@ class Crucible
             _ => throw new ArgumentOutOfRangeException()
         };
         
-        var newVertex = vertex with
-        {
-            X = vertex.X + xDelta, Y = vertex.Y + yDelta,
-            Direction = newDirection,
-            StepsRemaining = vertex.Direction == newDirection ? vertex.StepsRemaining - 1 : _maxSteps - 1
-        };
-        return newVertex;
+        return new Vertex(
+            X: vertex.X + xDelta, 
+            Y: vertex.Y + yDelta, 
+            Direction: newDirection, 
+            StepsRemaining: vertex.Direction == newDirection ? vertex.StepsRemaining - 1 : _maxSteps - 1);
     }
     
     private Direction ObtainNewDirection(Direction currentDirection, int directionChange)
