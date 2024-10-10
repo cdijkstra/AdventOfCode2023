@@ -19,7 +19,7 @@ class Program
 class Crucible
 {
     private List<List<int>> _heatLosses = new();
-    private record Vertex(int X, int Y, int Direction, int StepsRemaining);
+    private record Vertex(int X, int Y, Direction Direction, int StepsRemaining);
     private enum Direction { Right = 0, Down = 1, Left = 2, Up = 3 }
     private int MaxSteps;
     
@@ -96,8 +96,8 @@ class Crucible
         var totalHeatLoss = new Dictionary<Vertex, int>();
         
         // Start explicitly in both possible directions, due to constraint of not turning before 4 steps
-        var startingVertex = new Vertex(0, 0, 0, maxSteps);
-        var startingVertex2 = new Vertex(0, 0, 1, maxSteps);
+        var startingVertex = new Vertex(0, 0, Direction.Right, maxSteps);
+        var startingVertex2 = new Vertex(0, 0, Direction.Down, maxSteps);
         totalHeatLoss[startingVertex] = 0;
         totalHeatLoss[startingVertex2] = 0;
 
@@ -146,10 +146,16 @@ class Crucible
                             newVertex.StepsRemaining >= 0;
     }
 
+    private Direction ObtainNewDirection(Direction direction, int directionChange)
+    {
+        int enumValDirection = (int)direction; 
+        var directionNumber = (enumValDirection + directionChange + 4) % 4;
+        return (Direction)directionNumber;
+    }
+    
     private Vertex StepCrucible(Vertex vertex, int directionChange)
     {
-        var directionNumber = (vertex.Direction + directionChange + 4) % 4;
-        Direction newDirection = (Direction)directionNumber;
+        Direction newDirection = ObtainNewDirection(vertex.Direction, directionChange);
         
         var xDelta = newDirection switch
         {
@@ -170,8 +176,8 @@ class Crucible
         {
             X = vertex.X + xDelta,
             Y = vertex.Y + yDelta,
-            Direction = directionNumber,
-            StepsRemaining = vertex.Direction == directionNumber ? vertex.StepsRemaining - 1 : MaxSteps - 1
+            Direction = newDirection,
+            StepsRemaining = vertex.Direction == newDirection ? vertex.StepsRemaining - 1 : MaxSteps - 1
         };
         return newVertex;
     }
