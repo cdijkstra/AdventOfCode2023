@@ -12,7 +12,6 @@ class Program
         crucible.Solve2("dummydata", 10).Should().Be(94);
         crucible.Solve2("dummydata2", 10).Should().Be(71);
         crucible.Solve2("data", 10);
-        // 931 is too high
     }
 }
 
@@ -79,7 +78,7 @@ class Crucible
     
     public int Solve2(string fileName, int maxSteps)
     {
-        MaxSteps = maxSteps - 1;
+        MaxSteps = maxSteps;
         
         _heatLosses = File.ReadAllLines($"Data/{fileName}")
             .Select(line => line.ToCharArray()).ToList()
@@ -153,23 +152,18 @@ class Crucible
         
         var xDelta = newDirection switch
         {
-            Direction.Right => 0,
-            Direction.Down => 1,
-            Direction.Left => 0,
-            Direction.Up => -1
+            Direction.Right => 0, Direction.Down => 1, Direction.Left => 0, Direction.Up => -1,
+            _ => throw new ArgumentOutOfRangeException()
         };
         var yDelta = newDirection switch
         {
-            Direction.Right => 1,
-            Direction.Down => 0,
-            Direction.Left => -1,
-            Direction.Up => 0
+            Direction.Right => 1, Direction.Down => 0, Direction.Left => -1, Direction.Up => 0,
+            _ => throw new ArgumentOutOfRangeException()
         };
         
         var newVertex = vertex with
         {
-            X = vertex.X + xDelta,
-            Y = vertex.Y + yDelta,
+            X = vertex.X + xDelta, Y = vertex.Y + yDelta,
             Direction = newDirection,
             StepsRemaining = vertex.Direction == newDirection ? vertex.StepsRemaining - 1 : MaxSteps - 1
         };
