@@ -5,7 +5,8 @@ class Program
     static void Main(string[] args)
     {
         var snowVerload = new SnowverLoad();
-        snowVerload.Solve1("dummydata");
+        var ans = snowVerload.Solve1("dummydata");
+        Console.WriteLine(ans);
     }
 
     class SnowverLoad()
@@ -40,7 +41,6 @@ class Program
                 }
                 
                 // Now calculate the total size of the total graph.
-                var maxSize = newGraph.Count;
                 
                 var firstEntry = newGraph.Keys.ToArray()[0];
                 Queue<string> toVisit = new();
@@ -51,14 +51,24 @@ class Program
                 {
                     var node = toVisit.Dequeue();
                     visited.Add(node);
-                    foreach (var newNode in newGraph[node].Where(n => !visited.Contains(n)))
+                    
+                    var connectedKeys = newGraph
+                        .Where(kvp => kvp.Value.Contains(node))
+                        .Select(kvp => kvp.Key)
+                        .ToList();
+                    var connectedValues = newGraph.GetValueOrDefault(node, new List<string>());
+                    
+                    var connectedNodes = connectedKeys.Concat(connectedValues);
+                    
+                    foreach (var newNode in connectedNodes.Where(n => !visited.Contains(n)))
                     {
                         toVisit.Enqueue(newNode);
                     }
                 }
 
+                var maxSize = _nodes.Count - 3;
                 var size1 = visited.Count;
-                var size2 = newGraph.Count - size1;
+                var size2 = maxSize - size1;
                 var totalSize = size1 * size2;
                 if (totalSize != 0)
                 {
