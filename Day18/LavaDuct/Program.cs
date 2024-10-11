@@ -9,6 +9,27 @@ class Program
         var lavaduct = new Lavaduct();
         lavaduct.Solve1("dummydata").Should().Be(62);
         Console.WriteLine(lavaduct.Solve1("data"));
+        
+        // List<(int x, int y)> locations = new()
+        // {
+        //     (1, 1),
+        //     (461938, 1),
+        //     (461938, 56408),
+        //     (818609, 56408),
+        //     (818609, 919648),
+        //     (1186329, 919648),
+        //     (1186329, 1186329),
+        //     (609067, 1186329),
+        //     (609067, 356354),
+        //     (497057, 356354),
+        //     (497057, 1186329),
+        //     (5412, 1186329),
+        //     (5412, 500255),
+        //     (1, 500255),
+        //     (1, 1) // Closing the loop back to the starting point
+        // };
+        // lavaduct.ShoelaceFormula(locations).Should().Be(952404941483);
+        
         lavaduct.Solve2("dummydata").Should().Be(952408144115);
     }
 }
@@ -117,7 +138,7 @@ class Lavaduct
     
     public long Solve2(string fileName)
     {
-        List<(int x, int y)> locations = new() { (1, 1) };
+        List<(int x, int y)> locations = new() { (0,0) };
         // Shoelace algorithm
         foreach (var line in File.ReadAllLines($"Data/{fileName}"))
         {
@@ -146,29 +167,19 @@ class Lavaduct
         return ShoelaceFormula(locations);
     }
 
-    private long ShoelaceFormula(List<(int x, int y)> locations)
+    public long ShoelaceFormula(List<(int x, int y)> vertices)
     {
         long interiorArea = 0;
-        long boundaryPoints = 0;
-        for (var i = 0; i != locations.Count - 1; i++)
+        int amountOfVertices = vertices.Count;
+
+        // Loop through each vertex, including the last vertex connecting back to the first
+        for (int i = 0; i < amountOfVertices - 1; i++)
         {
-            interiorArea += Math.Abs(locations[i].x * locations[i + 1].y - locations[i].y * locations[i + 1].x);
-            // if (locations[i + 1].x == locations[i].x) // Move up or down
-            // {
-            //     boundaryPoints += Math.Abs(locations[i + 1].y + locations[i].y) + 1;
-            // }
-            // else if (locations[i + 1].y == locations[i].y) // Move up or down
-            // {
-            //     boundaryPoints += Math.Abs(locations[i + 1].x + locations[i].x) + 1;
-            // }
+            interiorArea += vertices[i].x * vertices[i + 1].y - vertices[i].y * vertices[i + 1].x;
         }
 
-        interiorArea = Math.Abs(interiorArea) / 2;
-        
-        // long interiorPoints = interiorArea - (boundaryPoints / 2) + 1;
-        // long totalArea = interiorPoints + (boundaryPoints / 2) - 1;
-
-        return interiorArea;
+        // Return the absolute value of the area divided by 2
+        return Math.Abs(interiorArea) / 2;
     }
 
     void FloodCoordinateIteratively(int startRow, int startCol)
