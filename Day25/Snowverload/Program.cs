@@ -1,11 +1,14 @@
-﻿namespace Snowverload;
+﻿using FluentAssertions;
+
+namespace Snowverload;
 
 class Program
 {
     static void Main(string[] args)
     {
         var snowVerload = new SnowverLoad();
-        var ans = snowVerload.Solve1("dummydata");
+        snowVerload.Solve1("dummydata").Should().Be(54);
+        var ans = snowVerload.Solve1("data");
         Console.WriteLine(ans);
     }
 
@@ -29,12 +32,22 @@ class Program
 
             List<int> sizes = new();
             
-            // Now cut wires and calculate max size graph
+            // Now cut wires, where GetCombination() finds all possible KV combinations that are cut
             foreach (var combo in GetCombinations())
             {
-                // Create a shallow copy of _graph
-                var newGraph = new Dictionary<string, List<string>>(_graph);
+                // Create a deep copy of _graph
+                var newGraph = _graph.ToDictionary(
+                    entry => entry.Key,                    // Copy the key as-is
+                    entry => new List<string>(entry.Value) // Create a new list from the value (deep copy)
+                );
+                // Remove the three values
                 combo.ForEach(kvPair => newGraph[kvPair.key].Remove(kvPair.value));
+
+                // Now remove any keys without values
+                var keysToRemove = newGraph
+                    .Where(entry => entry.Value.Count == 0)
+                    .Select(entry => entry.Key).ToList();
+                keysToRemove.ForEach(key => newGraph.Remove(key));
                 
                 // Now calculate the total size of the total graph.
                 var firstEntry = newGraph.Keys.ToArray()[0];
