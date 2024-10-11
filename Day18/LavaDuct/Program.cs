@@ -9,25 +9,6 @@ class Program
         var lavaduct = new Lavaduct();
         lavaduct.Solve1("dummydata").Should().Be(62);
         Console.WriteLine(lavaduct.Solve1("data"));
-
-        List<(int x, int y)> locations = new()
-        {
-            (1, 1), (4, 1), (4, 5), (1, 1)
-        };
-        lavaduct.TestShoelaceFormula(locations).Should().Be(6);
-        
-        List<(int x, int y)> locations2 = new()
-        {
-            (1,1),(5,1),(5,3),(1,3),(1,1)
-        };
-        lavaduct.TestShoelaceFormula(locations2).Should().Be(8);        
-        
-        List<(int x, int y)> locations3 = new()
-        {
-            (2,1),(4,1),(5,3),(4,5),(2,5),(1,3),(2,1)
-        };
-        lavaduct.TestShoelaceFormula(locations3).Should().Be(12);
-        
         lavaduct.Solve2("dummydata").Should().Be(952408144115);
     }
 }
@@ -106,10 +87,8 @@ class Lavaduct
         }
         
         // Find min,max row and column in pipeCoordinates
-        var minRow = locations.Min(loc => loc.x);
-        var maxRow = locations.Max(loc => loc.x);
-        var minCol = locations.Min(loc => loc.y);
-        var maxCol = locations.Max(loc => loc.y);
+        var minRow = locations.Min(loc => loc.x); var maxRow = locations.Max(loc => loc.x);
+        var minCol = locations.Min(loc => loc.y); var maxCol = locations.Max(loc => loc.y);
         
         _subgrid = _grid
             .Skip(minRow)
@@ -143,23 +122,23 @@ class Lavaduct
         foreach (var line in File.ReadAllLines($"Data/{fileName}"))
         {
             var hex = line.Split()[2].Trim('(', '#').TrimEnd(')');
-            var steps = int.Parse(hex.Substring(0, 5), System.Globalization.NumberStyles.HexNumber);
+            var distance = int.Parse(hex.Substring(0, 5), System.Globalization.NumberStyles.HexNumber);
             var direction = (Direction)int.Parse(hex.Substring(5));
             
             var lastLocationEntry = locations.Last();
             switch (direction)
             {
                 case Direction.U:
-                    locations.Add(((lastLocationEntry.x), lastLocationEntry.y - steps));
+                    locations.Add(((lastLocationEntry.x), lastLocationEntry.y - distance));
                     break;
                 case Direction.D:
-                    locations.Add(((lastLocationEntry.x), lastLocationEntry.y + steps));
+                    locations.Add(((lastLocationEntry.x), lastLocationEntry.y + distance));
                     break;
                 case Direction.L:
-                    locations.Add(((lastLocationEntry.x - steps), lastLocationEntry.y));
+                    locations.Add(((lastLocationEntry.x - distance), lastLocationEntry.y));
                     break;
                 case Direction.R:
-                    locations.Add(((lastLocationEntry.x + steps), lastLocationEntry.y));
+                    locations.Add(((lastLocationEntry.x + distance), lastLocationEntry.y));
                     break;
             }
         }
@@ -169,22 +148,32 @@ class Lavaduct
 
     private long ShoelaceFormula(List<(int x, int y)> locations)
     {
-        long sum = 0;
+        long interiorArea = 0;
+        long boundaryPoints = 0;
         for (var i = 0; i != locations.Count - 1; i++)
         {
-            sum += locations[i].x * locations[i + 1].y;
-            sum -= locations[i].y * locations[i + 1].x;
+            interiorArea += Math.Abs(locations[i].x * locations[i + 1].y - locations[i].y * locations[i + 1].x);
+            // if (locations[i + 1].x == locations[i].x) // Move up or down
+            // {
+            //     boundaryPoints += Math.Abs(locations[i + 1].y + locations[i].y) + 1;
+            // }
+            // else if (locations[i + 1].y == locations[i].y) // Move up or down
+            // {
+            //     boundaryPoints += Math.Abs(locations[i + 1].x + locations[i].x) + 1;
+            // }
         }
 
-        return Math.Abs(sum) / 2;
+        interiorArea = Math.Abs(interiorArea) / 2;
+        
+        // long interiorPoints = interiorArea - (boundaryPoints / 2) + 1;
+        // long totalArea = interiorPoints + (boundaryPoints / 2) - 1;
+
+        return interiorArea;
     }
 
     void FloodCoordinateIteratively(int startRow, int startCol)
     {
-        int rows = _subgrid.Count;
-        int cols = _subgrid[0].Count;
-
-        Queue<(int, int)> queue = new Queue<(int, int)>();
+        var queue = new Queue<(int, int)>();
         queue.Enqueue((startRow, startCol));
 
         while (queue.Count > 0)
