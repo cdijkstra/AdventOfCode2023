@@ -9,31 +9,47 @@ class Program
         var lavaduct = new Lavaduct();
         lavaduct.Solve1("dummydata").Should().Be(62);
         Console.WriteLine(lavaduct.Solve1("data"));
-        lavaduct.Solve2("dummydata").Should().Be(62);
+
+        List<(int x, int y)> locations = new()
+        {
+            (1, 1), (4, 1), (4, 5), (1, 1)
+        };
+        lavaduct.TestShoelaceFormula(locations).Should().Be(6);
+        
+        List<(int x, int y)> locations2 = new()
+        {
+            (1,1),(5,1),(5,3),(1,3),(1,1)
+        };
+        lavaduct.TestShoelaceFormula(locations2).Should().Be(8);        
+        
+        List<(int x, int y)> locations3 = new()
+        {
+            (2,1),(4,1),(5,3),(4,5),(2,5),(1,3),(2,1)
+        };
+        lavaduct.TestShoelaceFormula(locations3).Should().Be(12);
+        
+        lavaduct.Solve2("dummydata").Should().Be(952408144115);
     }
 }
 
-public enum Direction
+enum Direction
 {
-    U,D,R,L
+    R = 0, D = 1, L = 2, U = 3
 }
 
 
 class Lavaduct
 {
-    private static readonly Dictionary<int, Direction> IntToDirection = new()
-    {
-        { 0, Direction.R },
-        { 1, Direction.D },
-        { 2, Direction.L },
-        { 3, Direction.U },
-    };
-    
     private List<List<char>> _grid = new();
 
     private List<List<char>> _subgrid = new();
 
     private List<(int x, int y)> _floodLocations = new();
+
+    public long TestShoelaceFormula(List<(int x, int y)> locations)
+    {
+        return ShoelaceFormula(locations);
+    }
     
     public int Solve1(string fileName)
     {
@@ -120,90 +136,49 @@ class Lavaduct
         return _subgrid.Sum(row => row.Count(c => c is '#' or '.'));
     }
     
-    public int Solve2(string fileName)
+    public long Solve2(string fileName)
     {
-        _grid = Enumerable.Range(0, int.MaxValue)
-            .Select(_ => Enumerable.Repeat('.', int.MaxValue).ToList())
-            .ToList();
-        _subgrid = new();
-        
-        List<(int x, int y)> locations = new();
-        (int x, int y) location = ((int.MaxValue - 1) / 2, (int.MaxValue - 1) / 2);
-        locations.Add(location);
-        _grid[location.x][location.y] = '#';
-        
+        List<(int x, int y)> locations = new() { (1, 1) };
+        // Shoelace algorithm
         foreach (var line in File.ReadAllLines($"Data/{fileName}"))
         {
             var hex = line.Split()[2].Trim('(', '#').TrimEnd(')');
-            var numHex = hex.Substring(0, 5);
-            var dirHex = int.Parse(hex.Substring(5));
-            var dir = IntToDirection[dirHex];
-            var steps = int.Parse(numHex, System.Globalization.NumberStyles.HexNumber);
-            switch (dir)
+            var steps = int.Parse(hex.Substring(0, 5), System.Globalization.NumberStyles.HexNumber);
+            var direction = (Direction)int.Parse(hex.Substring(5));
+            
+            var lastLocationEntry = locations.Last();
+            switch (direction)
             {
-                case Direction.L:
-                    foreach (var step in Enumerable.Range(1, steps))
-                    {
-                        _grid[location.x][location.y - step] = '#';
-                        locations.Add((location.x, location.y - step));
-                    }
-                    location.y -= steps;
-                    break;
-                case Direction.R:
-                    foreach (var step in Enumerable.Range(1, steps))
-                    {
-                        _grid[location.x][location.y + step] = '#';
-                        locations.Add((location.x, location.y + step));
-
-                    }
-                    location.y += steps;
-                    break;
                 case Direction.U:
-                    foreach (var step in Enumerable.Range(1, steps))
-                    {
-                        _grid[location.x - step][location.y] = '#';
-                        locations.Add((location.x - step, location.y));
-                    }
-                    location.x -= steps;
+                    locations.Add(((lastLocationEntry.x), lastLocationEntry.y - steps));
                     break;
                 case Direction.D:
-                    foreach (var step in Enumerable.Range(1, steps))
-                    {
-                        _grid[location.x + step][location.y] = '#';
-                        locations.Add((location.x + step, location.y));
-                    }
-                    location.x += steps;
+                    locations.Add(((lastLocationEntry.x), lastLocationEntry.y + steps));
+                    break;
+                case Direction.L:
+                    locations.Add(((lastLocationEntry.x - steps), lastLocationEntry.y));
+                    break;
+                case Direction.R:
+                    locations.Add(((lastLocationEntry.x + steps), lastLocationEntry.y));
                     break;
             }
         }
-        
-        // Find min,max row and column in pipeCoordinates
-        var minRow = locations.Min(loc => loc.x);
-        var maxRow = locations.Max(loc => loc.x);
-        var minCol = locations.Min(loc => loc.y);
-        var maxCol = locations.Max(loc => loc.y);
-        
-        _subgrid = _grid
-            .Skip(minRow)
-            .Take(maxRow - minRow + 1)
-            .Select(row => row.Skip(minCol).Take(maxCol - minCol + 1).ToList())
-            .ToList();
 
-        _subgrid.Insert(0, new List<char>(Enumerable.Repeat('.', _subgrid[0].Count)));
-        _subgrid.Add(new List<char>(Enumerable.Repeat('.', _subgrid[0].Count)));
-        _subgrid.ForEach(row =>
-        {
-            row.Insert(0, '.');
-            row.Add('.');
-        });
-        
-        Console.WriteLine("Start flooding");
-        
-        FloodCoordinateIteratively(0, 0);
-        _floodLocations.ForEach(loc => _subgrid[loc.x][loc.y] = '0');
-        return _subgrid.Sum(row => row.Count(c => c is '#' or '.'));
+        return ShoelaceFormula(locations);
     }
-    
+
+    private long ShoelaceFormula(List<(int x, int y)> locations)
+    {
+        long sum = 0;
+        for (var i = 0; i != locations.Count - 1; i++)
+        {
+            sum += locations[i].x * locations[i + 1].y;
+            sum -= locations[i].y * locations[i + 1].x;
+        }
+
+        return Math.Abs(sum) / 2;
+    }
+
     void FloodCoordinateIteratively(int startRow, int startCol)
     {
         int rows = _subgrid.Count;
