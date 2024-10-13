@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-
 namespace LavaDuct;
 
 class Program
@@ -9,48 +8,19 @@ class Program
         var lavaduct = new Lavaduct();
         lavaduct.Solve1("dummydata").Should().Be(62);
         Console.WriteLine(lavaduct.Solve1("data"));
-        
-        // List<(int x, int y)> locations = new()
-        // {
-        //     (1, 1),
-        //     (461938, 1),
-        //     (461938, 56408),
-        //     (818609, 56408),
-        //     (818609, 919648),
-        //     (1186329, 919648),
-        //     (1186329, 1186329),
-        //     (609067, 1186329),
-        //     (609067, 356354),
-        //     (497057, 356354),
-        //     (497057, 1186329),
-        //     (5412, 1186329),
-        //     (5412, 500255),
-        //     (1, 500255),
-        //     (1, 1) // Closing the loop back to the starting point
-        // };
-        // lavaduct.ShoelaceFormula(locations).Should().Be(952404941483);
-        
         lavaduct.Solve2("dummydata").Should().Be(952408144115);
+        Console.WriteLine(lavaduct.Solve2("data"));
     }
 }
-
-enum Direction
-{
-    R = 0, D = 1, L = 2, U = 3
-}
-
 
 class Lavaduct
 {
     private List<List<char>> _grid = new();
-
     private List<List<char>> _subgrid = new();
-
     private List<(int x, int y)> _floodLocations = new();
-
-    public long TestShoelaceFormula(List<(int x, int y)> locations)
+    private enum Direction
     {
-        return ShoelaceFormula(locations);
+        R = 0, D = 1, L = 2, U = 3
     }
     
     public int Solve1(string fileName)
@@ -138,13 +108,15 @@ class Lavaduct
     
     public long Solve2(string fileName)
     {
-        List<(int x, int y)> locations = new() { (0,0) };
+        List<(long x, long y)> locations = new() { (0,0) };
+        long totalDistance = 0;
         // Shoelace algorithm
         foreach (var line in File.ReadAllLines($"Data/{fileName}"))
         {
             var hex = line.Split()[2].Trim('(', '#').TrimEnd(')');
-            var distance = int.Parse(hex.Substring(0, 5), System.Globalization.NumberStyles.HexNumber);
-            var direction = (Direction)int.Parse(hex.Substring(5));
+            var distance = long.Parse(hex.Substring(0, 5), System.Globalization.NumberStyles.HexNumber);
+            var direction = (Direction)long.Parse(hex.Substring(5));
+            totalDistance += distance;
             
             var lastLocationEntry = locations.Last();
             switch (direction)
@@ -164,24 +136,40 @@ class Lavaduct
             }
         }
 
-        return ShoelaceFormula(locations);
+        return ShoelaceFormula(locations, totalDistance);
     }
 
-    public long ShoelaceFormula(List<(int x, int y)> vertices)
+    private long ShoelaceFormula(List<(long x, long y)> vertices, long totalDistance)
     {
-        long interiorArea = 0;
-        int amountOfVertices = vertices.Count;
+        var amountOfVertices = vertices.Count;
+        // Shoelace theorem area calculation
+        var area = Math.Abs(vertices.Take(amountOfVertices - 1)
+            .Select((vertex, i) => vertex.x * vertices[i + 1].y - vertex.y * vertices[i + 1].x)
+            .Sum()) / 2;
+        
+        // Calculate the boundary points using GCD
+        var boundaryPoints = vertices.Take(vertices.Count - 1)
+            .Select((vertex, i) => GCD(Math.Abs(vertices[i + 1].x - vertex.x), Math.Abs(vertices[i + 1].y - vertex.y)))
+            .Sum();
 
-        // Loop through each vertex, including the last vertex connecting back to the first
-        for (int i = 0; i < amountOfVertices - 1; i++)
-        {
-            interiorArea += vertices[i].x * vertices[i + 1].y - vertices[i].y * vertices[i + 1].x;
-        }
-
-        // Return the absolute value of the area divided by 2
-        return Math.Abs(interiorArea) / 2;
+        // Apply Pick's theorem
+        var totalArea = area + boundaryPoints / 2 + 1;
+        
+        return totalArea;
     }
 
+    // Function to compute the GCD of two numbers
+    private long GCD(long a, long b)
+    {
+        while (b != 0)
+        {
+            var temp = b;
+            b = a % b;
+            a = temp;
+        }
+        return Math.Abs(a);
+    }
+    
     void FloodCoordinateIteratively(int startRow, int startCol)
     {
         var queue = new Queue<(int, int)>();

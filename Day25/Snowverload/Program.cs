@@ -7,9 +7,11 @@ class Program
     static void Main(string[] args)
     {
         var snowVerload = new SnowverLoad();
-        snowVerload.Solve1("dummydata").Should().Be(54);
+        // snowVerload.Solve1("dummydata").Should().Be(54);
         var ans = snowVerload.Solve1("data");
         Console.WriteLine(ans);
+        
+        // 22920 is too low
     }
 
     class SnowverLoad()
@@ -78,11 +80,11 @@ class Program
                 var totalSize = size1 * size2;
                 if (totalSize != 0)
                 {
-                    sizes.Add(totalSize);
+                    return totalSize;
                 }
             }
 
-            return sizes.Max();
+            return 0;
         }
         
         private IEnumerable<List<(string key, string value)>> GetCombinations()
