@@ -1,0 +1,5 @@
+ 
+ Min = 1, Max = 1415 
+ Min = 1, Max = 4000 
+ Min = 1, Max = 2005 
+ Min = 1, Max = 1350
