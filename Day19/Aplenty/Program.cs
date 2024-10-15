@@ -21,6 +21,8 @@ class Workflow
     public List<Condition> Conditions { get; set; }
 }
 
+record ValueRange(int Min, int Max);
+
 class Condition
 {
     public char RequirementChar { get; set; }
@@ -28,13 +30,12 @@ class Condition
     public int Value { get; set; }
     public Func<int, bool> Requirement { get; private set; }
     public string RequirementString { get; set; }
-    public string Accept { get; set; }
-    public string Reject { get; set; }
+    public string ConditionSatisfiedGoTo { get; set; }
+    public string ConditionViolatedGoTo { get; set; }
     
     public void SetRequirement(string requirement)
     {
         var parts = requirement.Split(new[] { '>', '<' }, StringSplitOptions.RemoveEmptyEntries);
-        var variable = parts[0].Trim();
         var value = int.Parse(parts[1].Trim());
 
         if (requirement.Contains('>'))
@@ -61,10 +62,13 @@ class VariableSet
 public enum Characters {
     x,m,a,s
 }
+
 class Aplenty
 {
     List<Workflow> _workflows = new();
     List<VariableSet> _variableSet = new();
+    Dictionary<Characters, List<ValueRange>> _acceptedValues = new();
+    private Queue<(Workflow, Dictionary<Characters, List<ValueRange>>)> _queue = new();
     
     public int Solve1(string fileName)
     {
@@ -84,104 +88,178 @@ class Aplenty
     public long Solve2(string fileName)
     {
         Initialize(fileName);
-
-        long totalCount = 0;
-
-        List<Dictionary<Characters, (int min, int max)>> allValues = new();
-        
-        foreach (var worflow in _workflows.Where(wf => wf.Conditions.Any(
-                     cond => cond.Reject == "A" ||
-                     cond.Accept == "A")))
-        {
-            Dictionary<Characters, (int min, int max)> dict = Enum.GetValues(typeof(Characters))
-                .Cast<Characters>()
-                .ToDictionary(
-                    character => character,
-                    range => (min: 1, max: 4000)
-                );
-
-            allValues.Add(FindContributionByReversing(dict, worflow, "A"));
-        }
-        
-        // Remove duplicate entries... How?
-        // Look at combinations of x,m,a,s and if they were already added
-        foreach (var values in allValues)
-        {
-            Console.WriteLine($"x: {values[Characters.x].min}, {values[Characters.x].max}");
-            Console.WriteLine($"m: {values[Characters.m].min}, {values[Characters.m].max}");
-            Console.WriteLine($"a: {values[Characters.a].min}, {values[Characters.a].max}");
-            Console.WriteLine($"s: {values[Characters.s].min}, {values[Characters.s].max}");
-        }
-
-        Dictionary<Characters, int> contributions = Enum.GetValues(typeof(Characters))
+        Dictionary<Characters, List<ValueRange>> initialAllowedVariables = Enum.GetValues(typeof(Characters))
             .Cast<Characters>()
             .ToDictionary(
                 character => character,
-                character => allValues.Any(vals => vals.GetValueOrDefault(character) == (1, 4000)) ? 4000 : 0
+                range => new List<ValueRange>{ new(1, 4000) }
+            );
+        _acceptedValues = Enum.GetValues(typeof(Characters))
+            .Cast<Characters>()
+            .ToDictionary(
+                character => character,
+                range => new List<ValueRange>()
             );
         
-        return 5;
+        _queue = new();
+        _queue.Enqueue((_workflows.Single(x => x.Name == "in"), initialAllowedVariables));
+        while (_queue.Count > 0)
+        {
+            var (workflow, allowedVariables) = _queue.Dequeue();
+            foreach (var condition in workflow.Conditions)
+            {
+                Characters charEnum = (Characters)Enum.Parse(typeof(Characters), condition.RequirementChar.ToString());
+
+                switch (condition.ConditionSatisfiedGoTo)
+                {
+                    case "A" when condition.Greater:
+                    {
+                        foreach (var range in initialAllowedVariables[charEnum]
+                                     .Where(range => range.Max > condition.Value))
+                        {
+                            if (range.Min >= condition.Value)
+                            {
+                                _acceptedValues[charEnum].Add(range);
+                            }
+                            else
+                            {
+                                _acceptedValues[charEnum].Add(range with { Min = condition.Value + 1 });
+                            }
+                        }
+
+                        // allowedVariables = RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
+                        break;
+                    }
+                    case "A": // when condition.Smaller:
+                    {
+                        foreach (var range in initialAllowedVariables[charEnum]
+                                     .Where(range => range.Min < condition.Value))
+                        {
+                            if (range.Max <= condition.Value)
+                            {
+                                _acceptedValues[charEnum].Add(range);
+                            }
+                            else
+                            {
+                                _acceptedValues[charEnum].Add(range with { Max = condition.Value - 1 });
+                            }
+                        }
+
+                        // allowedVariables = RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables);
+                        break;
+                    }
+                    case "R": // Remove entries
+                    {
+                        allowedVariables = condition.Greater ? 
+                            RetainRangesBelowValue(charEnum, condition.Value, allowedVariables) :
+                            RetainRangesAboveValue(charEnum, condition.Value, allowedVariables);
+                        break;
+                    }
+                    default:
+                        // Enqueue new workflow
+                        _queue.Enqueue((_workflows.Single(work => work.Name == condition.ConditionSatisfiedGoTo),
+                            allowedVariables));
+                        break;
+                }
+
+                switch (condition.ConditionViolatedGoTo)
+                {
+                    case "A" when condition.Greater:
+                    {
+                        foreach (var range in initialAllowedVariables[charEnum]
+                                     .Where(range => range.Min < condition.Value))
+                        {
+                            if (range.Max <= condition.Value)
+                            {
+                                _acceptedValues[charEnum].Add(range);
+                            }
+                            else
+                            {
+                                _acceptedValues[charEnum].Add(range with { Max = condition.Value });
+                            }
+                        }
+
+                        allowedVariables = RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables);
+                        break;
+                    }
+                    case "A": // when condition.Smaller:
+                    {
+                        foreach (var range in initialAllowedVariables[charEnum]
+                                     .Where(range => range.Max > condition.Value))
+                        {
+                            if (range.Min >= condition.Value)
+                            {
+                                _acceptedValues[charEnum].Add(range);
+                            }
+                            else
+                            {
+                                _acceptedValues[charEnum].Add(range with { Min = condition.Value });
+                            }
+                        }
+
+                        allowedVariables = RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
+                        break;
+                    }
+                    case "R":
+                        allowedVariables = condition.Greater ? 
+                            RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables) :
+                            RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
+                        break;
+                    default:
+                    {
+                        if (condition.ConditionViolatedGoTo != "")
+                        {
+                            // Enqueue new workflow
+                            _queue.Enqueue((_workflows.Single(work => work.Name == condition.ConditionViolatedGoTo), allowedVariables));
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        var totalProduct = 1;
+        var contributions = _acceptedValues
+            .ToDictionary(
+                kvp => kvp.Key, // The key is the character
+                kvp => kvp.Value.Sum(range => range.Max - range.Min + 1) // Sum contributions for each key
+            );
+        
+        foreach (var contribution in contributions.Values)
+        {
+            totalProduct *= contribution; // Multiply the current contribution to the total
+        }
+        
+        return totalProduct;
     }
 
-    private Dictionary<Characters, (int min, int max)> FindContributionByReversing(Dictionary<Characters, (int min, int max)> dict,
-        Workflow workflow, string findWorkflow)
+    private Dictionary<Characters, List<ValueRange>> RetainRangesBelowValue(Characters charEnum, int retainValuesBelow, Dictionary<Characters, List<ValueRange>> acceptedValues)
     {
-        var conditions = workflow.Conditions.Where(cond => cond.Reject == findWorkflow || cond.Accept == findWorkflow).ToList();
-        foreach (var condition in conditions)
+        acceptedValues[charEnum].RemoveAll(val => val.Min > retainValuesBelow);
+        var modifyValue = acceptedValues[charEnum]
+            .SingleOrDefault(val => val.Min < retainValuesBelow && val.Max > retainValuesBelow);
+        if (modifyValue != default)
         {
-            Characters charEnum = (Characters)Enum.Parse(typeof(Characters), condition.RequirementChar.ToString());
-            var setMinValue = dict[charEnum].min;
-            var setMaxValue = dict[charEnum].max;
-
-            if (condition.Accept == findWorkflow)
-            {
-                if (condition.Greater) // Only Greater and Smaller allowed
-                {
-                    var minValue = Math.Max(setMinValue, condition.Value + 1);
-                    var maxValue = Math.Min(setMaxValue, 4000);
-                    dict[charEnum] = (min: minValue, max: maxValue);
-                }
-                else
-                {
-                    var minValue = Math.Max(setMinValue, 1);
-                    var maxValue = Math.Min(setMaxValue, condition.Value - 1);
-                    dict[charEnum] = (min: minValue, max: maxValue);
-                }
-            }
-            if (condition.Reject == findWorkflow)
-            {
-                if (condition.Greater) // Only Greater and Smaller allowed
-                {
-                    // a > 20 -> reject when a <= 20
-                    // Smaller than or equal
-                    var minValue = Math.Max(setMinValue, 1);
-                    var maxValue = Math.Min(setMaxValue, condition.Value);
-                    dict[charEnum] = (min: minValue, max: maxValue);
-                }
-                else
-                {
-                    // a < 20 -> reject when a >= 20
-                    var minValue = Math.Max(setMinValue, condition.Value);
-                    var maxValue = Math.Min(setMaxValue, 4000);
-                    dict[charEnum] = (min: minValue, max: maxValue);
-                }
-            }
-
+            acceptedValues[charEnum].RemoveAll(val => val.Min < retainValuesBelow && val.Max > retainValuesBelow);
+            acceptedValues[charEnum].Add(modifyValue with { Max = retainValuesBelow - 1 });
         }
-        
-        if (workflow.Name == "in")
-        {
-            return dict;
-        }
-        
-        // Otherwise, call function again until we are at "in"
-        var newWorkflow = _workflows.Single(wf => wf.Conditions.Any(
-            cond => cond.Reject == workflow.Name ||
-                    cond.Accept == workflow.Name));
 
-        return FindContributionByReversing(dict, newWorkflow, workflow.Name);
+        return acceptedValues;
     }
-
+    
+    private Dictionary<Characters, List<ValueRange>> RetainRangesAboveValue(Characters charEnum, int retainValuesAbove, Dictionary<Characters, List<ValueRange>> acceptedValues)
+    {
+        acceptedValues[charEnum].RemoveAll(val => val.Max < retainValuesAbove);
+        var modifyValue = acceptedValues[charEnum]
+            .SingleOrDefault(val => val.Min < retainValuesAbove && val.Max > retainValuesAbove);
+        if (modifyValue != default)
+        {
+            acceptedValues[charEnum].RemoveAll(val => val.Min < retainValuesAbove && val.Max > retainValuesAbove);
+            acceptedValues[charEnum].Add(modifyValue with { Min = retainValuesAbove + 1 });
+        }
+        
+        return acceptedValues;
+    }
 
     private void Initialize(string fileName)
     {
@@ -238,8 +316,8 @@ class Aplenty
                                 RequirementChar = requirement[0],
                                 Greater = requirement.Contains('>'),
                                 Value = int.Parse(value),
-                                Accept = accept,
-                                Reject = reject,
+                                ConditionSatisfiedGoTo = accept,
+                                ConditionViolatedGoTo = reject,
                                 RequirementString = requirement
                             };
                             condition.SetRequirement(requirement);
@@ -270,33 +348,34 @@ class Aplenty
                 var satisfied = condition.Requirement(variables.KeyValues[condition.RequirementChar]);
                 if (satisfied)
                 {
-                    if (condition.Accept == "A")
+                    if (condition.ConditionSatisfiedGoTo == "A")
                     {
                         return variables.KeyValues.Values.Sum();
                     }
-                    if (condition.Accept == "R")
+                    if (condition.ConditionSatisfiedGoTo == "R")
                     {
                         return 0;
                     }
 
-                    var acceptWorkflow = _workflows.Single(work => work.Name == condition.Accept);
+                    var acceptWorkflow = _workflows.Single(work => work.Name == condition.ConditionSatisfiedGoTo);
                     return CalculateAddedValueRecursively(variables, acceptWorkflow);
                 }
 
-                if (condition.Reject == String.Empty) continue;
-                
-                if (condition.Reject == "A")
+                switch (condition.ConditionViolatedGoTo)
                 {
-                    return variables.KeyValues.Values.Sum();
+                    case "":
+                        continue;
+                    case "A":
+                        return variables.KeyValues.Values.Sum();
+                    case "R":
+                        return 0;
+                    default:
+                    {
+                        var rejectWorkflow = _workflows.Single(work => work.Name == condition.ConditionViolatedGoTo);
+                        return CalculateAddedValueRecursively(variables, rejectWorkflow);
+                        // Else try for next entry.
+                    }
                 }
-                if (condition.Reject == "R")
-                {
-                    return 0;
-                }
-                
-                var rejectWorkflow = _workflows.Single(work => work.Name == condition.Reject);
-                return CalculateAddedValueRecursively(variables, rejectWorkflow);
-                // Else try for next entry.
             }
         }
 
