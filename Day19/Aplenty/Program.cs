@@ -11,7 +11,7 @@ class Program
         aplenty.Solve1("dummydata").Should().Be(19114);
         Console.WriteLine(aplenty.Solve1("data"));
         aplenty.Solve2("dummydata").Should().Be(167409079868000);
-
+        Console.WriteLine(aplenty.Solve2("data"));
     }
 }
 
@@ -95,7 +95,7 @@ class Aplenty
                 range => new ValueRange(1, 4000) 
             );
         
-        return ProcessRanges("in", initialAllowedVariables);
+        return ProcessRanges("in", initialAllowedVariables, new List<string> {"in"});
     }
 
     Dictionary<Characters, ValueRange> acceptedValues = Enum.GetValues(typeof(Characters))
@@ -107,13 +107,14 @@ class Aplenty
     
     // Recursive function. All conditions are of A > B or A < B type,
     //  so we can always keep track of a single range for each XMAS char, no need for List<ValueRange>
-    private long ProcessRanges(string workflowName, Dictionary<Characters, ValueRange> ranges)
+    private long ProcessRanges(string workflowName, Dictionary<Characters, ValueRange> ranges, List<string> path)
     {
         switch (workflowName)
         {
             case "A":
                 var contribution = ranges.Values.Aggregate<ValueRange, long>(1, (current, range) => 
                     current * (range.Max - range.Min + 1));
+                Console.WriteLine($"Contribution from {string.Join(',', path)}");
                 Console.WriteLine($"Adding contribution: x = {ranges[Characters.x]}, m = {ranges[Characters.m]}, a = {ranges[Characters.a]}, s = {ranges[Characters.s]}");
                 return contribution;
             case "R":
@@ -124,53 +125,74 @@ class Aplenty
         var workflow = _workflows.Single(wf => wf.Name == workflowName);
         foreach (var condition in workflow.Conditions)
         {
+            var succeedPath = path.Append(condition.ConditionSatisfiedGoTo).ToList();
+            var failedPath = path.Append(condition.ConditionFailedGoTo).ToList();
+            
             Characters charEnum = (Characters)Enum.Parse(typeof(Characters), condition.RequirementChar.ToString());
             if (condition.Greater) // m>2090:A,rfg
             {
                 if (ranges[charEnum].Max <= condition.Value)
                 {
-                    result += ProcessRanges(condition.ConditionFailedGoTo, ranges);
+                    result += ProcessRanges(condition.ConditionFailedGoTo, ranges, failedPath);
                 }
                 else if (ranges[charEnum].Min > condition.Value)
                 {
-                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, ranges);
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, ranges, succeedPath);
                 }
                 else
                 {
                     // Part goes to rejected and part goes to satisfied.
-                    var succeedPart = new Dictionary<Characters, ValueRange>(ranges);
-                    succeedPart[charEnum] = new ValueRange(condition.Value + 1, ranges[charEnum].Max);
-                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, succeedPart);
+                    var succeedPart = new Dictionary<Characters, ValueRange>(ranges)
+                    {
+                        [charEnum] = new ValueRange(condition.Value + 1, ranges[charEnum].Max)
+                    };
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, succeedPart, succeedPath);
 
-                    if (condition.ConditionFailedGoTo == "") continue;
+                    var failedPart = new Dictionary<Characters, ValueRange>(ranges)
+                    {
+                        [charEnum] = new ValueRange(ranges[charEnum].Min, condition.Value)
+                    };
                     
-                    var failedPart = new Dictionary<Characters, ValueRange>(ranges);
-                    failedPart[charEnum] = new ValueRange(ranges[charEnum].Min, condition.Value);
-                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, failedPart);
+                    if (condition.ConditionFailedGoTo == "")
+                    {
+                        // Update values for next rule
+                        ranges = failedPart;
+                    }
+                    else
+                    {
+                        result += ProcessRanges(condition.ConditionFailedGoTo, failedPart, failedPath);
+                    }
                 }
             }
             else // m<2090:A,rfg
             {
                 if (ranges[charEnum].Max < condition.Value)
                 {
-                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, ranges);
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, ranges, succeedPath);
                 }
                 else if (ranges[charEnum].Min >= condition.Value)
                 {
-                    result += ProcessRanges(condition.ConditionFailedGoTo, ranges);
+                    result += ProcessRanges(condition.ConditionFailedGoTo, ranges, failedPath);
                 }
                 else
                 {
                     // Part goes to rejected and part goes to satisfied.
                     var succeedPart = new Dictionary<Characters, ValueRange>(ranges);
                     succeedPart[charEnum] = new ValueRange(ranges[charEnum].Min, condition.Value - 1);
-                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, succeedPart);
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, succeedPart, succeedPath);
 
-                    if (condition.ConditionFailedGoTo == "") continue;
-                    
                     var failedPart = new Dictionary<Characters, ValueRange>(ranges);
                     failedPart[charEnum] = new ValueRange(condition.Value, ranges[charEnum].Max);
-                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, failedPart);
+                    
+                    if (condition.ConditionFailedGoTo == "")
+                    {
+                        // Update values for next rule
+                        ranges = failedPart;
+                    }
+                    else
+                    {
+                        result += ProcessRanges(condition.ConditionFailedGoTo, failedPart, failedPath);
+                    }
                 }
             }
         }
