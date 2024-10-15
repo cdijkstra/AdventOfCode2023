@@ -144,11 +144,7 @@ class Aplenty
                         ? 0 
                         : ProcessRanges(condition.ConditionFailedGoTo, failedPart);
                     
-                    if (condition.ConditionFailedGoTo == "")
-                    {
-                        ranges = failedPart;
-                    }
-
+                    ranges = failedPart;
                     break;
                 }
                 // m<2090:A,rfg
@@ -171,12 +167,7 @@ class Aplenty
                     ? 0 
                     : ProcessRanges(condition.ConditionFailedGoTo, failedPart);
                     
-                    if (condition.ConditionFailedGoTo == "")
-                    {
-                        // Update values for next rule
-                        ranges = failedPart;
-                    }
-
+                    ranges = failedPart;
                     break;
                 }
                 default:
