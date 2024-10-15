@@ -106,55 +106,86 @@ class Aplenty
         while (_queue.Count > 0)
         {
             var (workflow, allowedVariables) = _queue.Dequeue();
+            
             foreach (var condition in workflow.Conditions)
             {
                 Characters charEnum = (Characters)Enum.Parse(typeof(Characters), condition.RequirementChar.ToString());
+                var allowedChars = allowedVariables[charEnum];
 
+                var pass = new List<ValueRange>();
+                var fail = new List<ValueRange>();
+                
+                if (condition.Greater)
+                {
+                    foreach (var range in allowedVariables[charEnum]
+                                 .Where(range => range.Max > condition.Value))
+                    {
+                        if (range.Min >= condition.Value)
+                        {
+                            pass.Add(range);
+                        }
+                        else
+                        {
+                            pass.Add(range with { Min = condition.Value + 1 });
+                        }
+                    }
+                    
+                    foreach (var range in allowedVariables[charEnum]
+                                 .Where(range => range.Min < condition.Value))
+                    {
+                        if (range.Max <= condition.Value)
+                        {
+                            fail.Add(range);
+                        }
+                        else
+                        {
+                            fail.Add(range with { Max = condition.Value - 1 });
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var range in allowedVariables[charEnum]
+                                 .Where(range => range.Min < condition.Value))
+                    {
+                        if (range.Max <= condition.Value)
+                        {
+                            fail.Add(range);
+                        }
+                        else
+                        {
+                            fail.Add(range with { Max = condition.Value });
+                        }
+                    }
+                    
+                    foreach (var range in allowedVariables[charEnum]
+                                 .Where(range => range.Max > condition.Value))
+                    {
+                        if (range.Min >= condition.Value)
+                        {
+                            pass.Add(range);
+                        }
+                        else
+                        {
+                            pass.Add(range with { Min = condition.Value });
+                        }
+                    }
+                }
+                
                 switch (condition.ConditionSatisfiedGoTo)
                 {
-                    case "A" when condition.Greater:
+                    case "A":
                     {
-                        foreach (var range in initialAllowedVariables[charEnum]
-                                     .Where(range => range.Max > condition.Value))
-                        {
-                            if (range.Min >= condition.Value)
-                            {
-                                _acceptedValues[charEnum].Add(range);
-                            }
-                            else
-                            {
-                                _acceptedValues[charEnum].Add(range with { Min = condition.Value + 1 });
-                            }
-                        }
-
-                        // allowedVariables = RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
+                        _acceptedValues[charEnum].AddRange(pass);
                         break;
                     }
-                    case "A": // when condition.Smaller:
-                    {
-                        foreach (var range in initialAllowedVariables[charEnum]
-                                     .Where(range => range.Min < condition.Value))
-                        {
-                            if (range.Max <= condition.Value)
-                            {
-                                _acceptedValues[charEnum].Add(range);
-                            }
-                            else
-                            {
-                                _acceptedValues[charEnum].Add(range with { Max = condition.Value - 1 });
-                            }
-                        }
-
-                        // allowedVariables = RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables);
-                        break;
-                    }
-                    case "R": // Remove entries
-                    {
-                        allowedVariables = condition.Greater ? 
-                            RetainRangesBelowValue(charEnum, condition.Value, allowedVariables) :
-                            RetainRangesAboveValue(charEnum, condition.Value, allowedVariables);
-                        break;
-                    }
+                    // case "R": // Remove entries
+                    // {
+                    //     allowedVariables = condition.Greater ? 
+                    //         RetainRangesBelowValue(charEnum, condition.Value, allowedVariables) :
+                    //         RetainRangesAboveValue(charEnum, condition.Value, allowedVariables);
+                    //     break;
+                    // }
                     default:
                         // Enqueue new workflow
                         _queue.Enqueue((_workflows.Single(work => work.Name == condition.ConditionSatisfiedGoTo),
@@ -164,54 +195,25 @@ class Aplenty
 
                 switch (condition.ConditionViolatedGoTo)
                 {
-                    case "A" when condition.Greater:
+                    case "A":
                     {
-                        foreach (var range in initialAllowedVariables[charEnum]
-                                     .Where(range => range.Min < condition.Value))
-                        {
-                            if (range.Max <= condition.Value)
-                            {
-                                _acceptedValues[charEnum].Add(range);
-                            }
-                            else
-                            {
-                                _acceptedValues[charEnum].Add(range with { Max = condition.Value });
-                            }
-                        }
-
-                        allowedVariables = RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables);
+                        _acceptedValues[charEnum].AddRange(fail);
                         break;
                     }
-                    case "A": // when condition.Smaller:
-                    {
-                        foreach (var range in initialAllowedVariables[charEnum]
-                                     .Where(range => range.Max > condition.Value))
-                        {
-                            if (range.Min >= condition.Value)
-                            {
-                                _acceptedValues[charEnum].Add(range);
-                            }
-                            else
-                            {
-                                _acceptedValues[charEnum].Add(range with { Min = condition.Value });
-                            }
-                        }
-
-                        allowedVariables = RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
-                        break;
-                    }
-                    case "R":
-                        allowedVariables = condition.Greater ? 
-                            RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables) :
-                            RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
-                        break;
+                    // case "R":
+                    //     allowedVariables = condition.Greater ? 
+                    //         RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables) :
+                    //         RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
+                    //     break;
                     default:
                     {
                         if (condition.ConditionViolatedGoTo != "")
                         {
                             // Enqueue new workflow
-                            _queue.Enqueue((_workflows.Single(work => work.Name == condition.ConditionViolatedGoTo), allowedVariables));
+                            _queue.Enqueue((_workflows.Single(work => work.Name == condition.ConditionViolatedGoTo),
+                                allowedVariables));
                         }
+
                         break;
                     }
                 }
