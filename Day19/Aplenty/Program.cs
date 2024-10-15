@@ -31,7 +31,7 @@ class Condition
     public Func<int, bool> Requirement { get; private set; }
     public string RequirementString { get; set; }
     public string ConditionSatisfiedGoTo { get; set; }
-    public string ConditionViolatedGoTo { get; set; }
+    public string ConditionFailedGoTo { get; set; }
     
     public void SetRequirement(string requirement)
     {
@@ -88,152 +88,96 @@ class Aplenty
     public long Solve2(string fileName)
     {
         Initialize(fileName);
-        Dictionary<Characters, List<ValueRange>> initialAllowedVariables = Enum.GetValues(typeof(Characters))
+        Dictionary<Characters, ValueRange> initialAllowedVariables = Enum.GetValues(typeof(Characters))
             .Cast<Characters>()
             .ToDictionary(
                 character => character,
-                range => new List<ValueRange>{ new(1, 4000) }
-            );
-        _acceptedValues = Enum.GetValues(typeof(Characters))
-            .Cast<Characters>()
-            .ToDictionary(
-                character => character,
-                range => new List<ValueRange>()
+                range => new ValueRange(1, 4000) 
             );
         
-        _queue = new();
-        _queue.Enqueue((_workflows.Single(x => x.Name == "in"), initialAllowedVariables));
-        while (_queue.Count > 0)
-        {
-            var (workflow, allowedVariables) = _queue.Dequeue();
-            
-            foreach (var condition in workflow.Conditions)
-            {
-                Characters charEnum = (Characters)Enum.Parse(typeof(Characters), condition.RequirementChar.ToString());
-                var allowedChars = allowedVariables[charEnum];
+        return ProcessRanges("in", initialAllowedVariables);
+    }
 
-                var pass = new List<ValueRange>();
-                var fail = new List<ValueRange>();
-                
-                if (condition.Greater)
+    Dictionary<Characters, ValueRange> acceptedValues = Enum.GetValues(typeof(Characters))
+        .Cast<Characters>()
+        .ToDictionary(
+            character => character,
+            range => new ValueRange(0, 1) 
+        );
+    
+    // Recursive function. All conditions are of A > B or A < B type,
+    //  so we can always keep track of a single range for each XMAS char, no need for List<ValueRange>
+    private long ProcessRanges(string workflowName, Dictionary<Characters, ValueRange> ranges)
+    {
+        switch (workflowName)
+        {
+            case "A":
+                var contribution = ranges.Values.Aggregate<ValueRange, long>(1, (current, range) => 
+                    current * (range.Max - range.Min + 1));
+                Console.WriteLine($"Adding contribution: x = {ranges[Characters.x]}, m = {ranges[Characters.m]}, a = {ranges[Characters.a]}, s = {ranges[Characters.s]}");
+                return contribution;
+            case "R":
+                return 0;
+        }
+        
+        long result = 0;
+        var workflow = _workflows.Single(wf => wf.Name == workflowName);
+        foreach (var condition in workflow.Conditions)
+        {
+            Characters charEnum = (Characters)Enum.Parse(typeof(Characters), condition.RequirementChar.ToString());
+            if (condition.Greater) // m>2090:A,rfg
+            {
+                if (ranges[charEnum].Max <= condition.Value)
                 {
-                    foreach (var range in allowedVariables[charEnum]
-                                 .Where(range => range.Max > condition.Value))
-                    {
-                        if (range.Min >= condition.Value)
-                        {
-                            pass.Add(range);
-                        }
-                        else
-                        {
-                            pass.Add(range with { Min = condition.Value + 1 });
-                        }
-                    }
-                    
-                    foreach (var range in allowedVariables[charEnum]
-                                 .Where(range => range.Min < condition.Value))
-                    {
-                        if (range.Max <= condition.Value)
-                        {
-                            fail.Add(range);
-                        }
-                        else
-                        {
-                            fail.Add(range with { Max = condition.Value - 1 });
-                        }
-                    }
+                    result += ProcessRanges(condition.ConditionFailedGoTo, ranges);
+                }
+                else if (ranges[charEnum].Min > condition.Value)
+                {
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, ranges);
                 }
                 else
                 {
-                    foreach (var range in allowedVariables[charEnum]
-                                 .Where(range => range.Min < condition.Value))
-                    {
-                        if (range.Max <= condition.Value)
-                        {
-                            fail.Add(range);
-                        }
-                        else
-                        {
-                            fail.Add(range with { Max = condition.Value });
-                        }
-                    }
+                    // Part goes to rejected and part goes to satisfied.
+                    var succeedPart = new Dictionary<Characters, ValueRange>(ranges);
+                    succeedPart[charEnum] = new ValueRange(condition.Value + 1, ranges[charEnum].Max);
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, succeedPart);
+
+                    if (condition.ConditionFailedGoTo == "") continue;
                     
-                    foreach (var range in allowedVariables[charEnum]
-                                 .Where(range => range.Max > condition.Value))
-                    {
-                        if (range.Min >= condition.Value)
-                        {
-                            pass.Add(range);
-                        }
-                        else
-                        {
-                            pass.Add(range with { Min = condition.Value });
-                        }
-                    }
+                    var failedPart = new Dictionary<Characters, ValueRange>(ranges);
+                    failedPart[charEnum] = new ValueRange(ranges[charEnum].Min, condition.Value);
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, failedPart);
                 }
-                
-                switch (condition.ConditionSatisfiedGoTo)
+            }
+            else // m<2090:A,rfg
+            {
+                if (ranges[charEnum].Max < condition.Value)
                 {
-                    case "A":
-                    {
-                        _acceptedValues[charEnum].AddRange(pass);
-                        break;
-                    }
-                    // case "R": // Remove entries
-                    // {
-                    //     allowedVariables = condition.Greater ? 
-                    //         RetainRangesBelowValue(charEnum, condition.Value, allowedVariables) :
-                    //         RetainRangesAboveValue(charEnum, condition.Value, allowedVariables);
-                    //     break;
-                    // }
-                    default:
-                        // Enqueue new workflow
-                        _queue.Enqueue((_workflows.Single(work => work.Name == condition.ConditionSatisfiedGoTo),
-                            allowedVariables));
-                        break;
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, ranges);
                 }
-
-                switch (condition.ConditionViolatedGoTo)
+                else if (ranges[charEnum].Min >= condition.Value)
                 {
-                    case "A":
-                    {
-                        _acceptedValues[charEnum].AddRange(fail);
-                        break;
-                    }
-                    // case "R":
-                    //     allowedVariables = condition.Greater ? 
-                    //         RetainRangesAboveValue(charEnum, condition.Value - 1, allowedVariables) :
-                    //         RetainRangesBelowValue(charEnum, condition.Value + 1, allowedVariables);
-                    //     break;
-                    default:
-                    {
-                        if (condition.ConditionViolatedGoTo != "")
-                        {
-                            // Enqueue new workflow
-                            _queue.Enqueue((_workflows.Single(work => work.Name == condition.ConditionViolatedGoTo),
-                                allowedVariables));
-                        }
+                    result += ProcessRanges(condition.ConditionFailedGoTo, ranges);
+                }
+                else
+                {
+                    // Part goes to rejected and part goes to satisfied.
+                    var succeedPart = new Dictionary<Characters, ValueRange>(ranges);
+                    succeedPart[charEnum] = new ValueRange(ranges[charEnum].Min, condition.Value - 1);
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, succeedPart);
 
-                        break;
-                    }
+                    if (condition.ConditionFailedGoTo == "") continue;
+                    
+                    var failedPart = new Dictionary<Characters, ValueRange>(ranges);
+                    failedPart[charEnum] = new ValueRange(condition.Value, ranges[charEnum].Max);
+                    result += ProcessRanges(condition.ConditionSatisfiedGoTo, failedPart);
                 }
             }
         }
-
-        var totalProduct = 1;
-        var contributions = _acceptedValues
-            .ToDictionary(
-                kvp => kvp.Key, // The key is the character
-                kvp => kvp.Value.Sum(range => range.Max - range.Min + 1) // Sum contributions for each key
-            );
         
-        foreach (var contribution in contributions.Values)
-        {
-            totalProduct *= contribution; // Multiply the current contribution to the total
-        }
-        
-        return totalProduct;
+        return result;
     }
+    
 
     private Dictionary<Characters, List<ValueRange>> RetainRangesBelowValue(Characters charEnum, int retainValuesBelow, Dictionary<Characters, List<ValueRange>> acceptedValues)
     {
@@ -319,7 +263,7 @@ class Aplenty
                                 Greater = requirement.Contains('>'),
                                 Value = int.Parse(value),
                                 ConditionSatisfiedGoTo = accept,
-                                ConditionViolatedGoTo = reject,
+                                ConditionFailedGoTo = reject,
                                 RequirementString = requirement
                             };
                             condition.SetRequirement(requirement);
@@ -363,7 +307,7 @@ class Aplenty
                     return CalculateAddedValueRecursively(variables, acceptWorkflow);
                 }
 
-                switch (condition.ConditionViolatedGoTo)
+                switch (condition.ConditionFailedGoTo)
                 {
                     case "":
                         continue;
@@ -373,7 +317,7 @@ class Aplenty
                         return 0;
                     default:
                     {
-                        var rejectWorkflow = _workflows.Single(work => work.Name == condition.ConditionViolatedGoTo);
+                        var rejectWorkflow = _workflows.Single(work => work.Name == condition.ConditionFailedGoTo);
                         return CalculateAddedValueRecursively(variables, rejectWorkflow);
                         // Else try for next entry.
                     }
