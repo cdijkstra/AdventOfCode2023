@@ -55,11 +55,11 @@ class HailSimulation
             double vyr = variables[4];
             double vzr = variables[5];
     
-            var amountOfHailStones = 4;
-            var results = Vector<double>.Build.Dense(hailStones.Count * amountOfHailStones);
+            var amountOfHailStonesToConsider = 4;
+            var results = Vector<double>.Build.Dense(hailStones.Count * amountOfHailStonesToConsider);
             int index = 0;
     
-            foreach (var hailStone in hailStones[..amountOfHailStones])
+            foreach (var hailStone in hailStones[..amountOfHailStonesToConsider])
             {
                 results[index++] = (xr - hailStone.X) * (hailStone.Vy - vyr) - (yr - hailStone.Y) * (hailStone.Vx - vxr);
                 results[index++] = (yr - hailStone.Y) * (hailStone.Vz - vzr) - (zr - hailStone.Z) * (hailStone.Vy - vyr);
@@ -70,14 +70,10 @@ class HailSimulation
         // Solve the equations
         
         double tolerance = 1e-6;
-        int maxIterations = 1000;
+        int maxIterations = 100;
         
-        var solution = NonLinearSystemSolver.NewtonRaphson(
-            function, // Function representing the system of equations
-            initialGuess, // Initial guess
-            tolerance, // Tolerance for convergence
-            maxIterations // Maximum iterations
-        );        // var solution = NewtonRaphson.FindRoot(function, initialGuess, 1e-6, 1000);
+        bool success = Broyden.FindRoot(function, initialGuess, tolerance, maxIterations, out var result);
+        return success ? (int)result : 0;
     }
 
     private static List<Hail> ReadInput(string fileName)
