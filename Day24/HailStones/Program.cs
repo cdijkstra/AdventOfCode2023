@@ -1,4 +1,5 @@
-﻿using MathNet.Numerics.LinearAlgebra;
+﻿using FluentAssertions;
+using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.RootFinding;
 using MathNet.Symbolics;
 using Expr = MathNet.Symbolics.Expression;
@@ -10,7 +11,8 @@ class Program
     static void Main(string[] args)
     {
         var simulation = new HailSimulation();
-        simulation.Solve1("dummydata", 7, 27);
+        simulation.Solve1("dummydata", 7, 27).Should().Be(2);
+        
         simulation.Solve1("data", 200000000000000, 400000000000000);
         simulation.Solve2("dummydata");
     }
@@ -43,10 +45,10 @@ class HailSimulation
     {
         var hailStones = ReadInput(fileName);
         
-        var initialGuess = Vector<double>.Build.DenseOfArray(new double[] { 0, 0, 0, 0, 0, 0 });
+        var initialGuess = new double[] { 0, 0, 0, 0, 0, 0 }; // x,y,z,vx,vy,vz
         
         // Function to evaluate the system of equations numerically
-        Func<Vector<double>, Vector<double>> function = variables =>
+        Func<double[], double[]> function = variables =>
         {
             double xr = variables[0];
             double yr = variables[1];
@@ -55,8 +57,8 @@ class HailSimulation
             double vyr = variables[4];
             double vzr = variables[5];
     
-            var amountOfHailStonesToConsider = 4;
-            var results = Vector<double>.Build.Dense(hailStones.Count * amountOfHailStonesToConsider);
+            var amountOfHailStonesToConsider = 3;
+            var results = new double[2 * amountOfHailStonesToConsider];
             int index = 0;
     
             foreach (var hailStone in hailStones[..amountOfHailStonesToConsider])
@@ -72,8 +74,8 @@ class HailSimulation
         double tolerance = 1e-6;
         int maxIterations = 100;
         
-        bool success = Broyden.FindRoot(function, initialGuess, tolerance, maxIterations, out var result);
-        return success ? (int)result : 0;
+        var result = Broyden.FindRoot(function, initialGuess, tolerance, maxIterations);
+        return (int)result[0];
     }
 
     private static List<Hail> ReadInput(string fileName)
