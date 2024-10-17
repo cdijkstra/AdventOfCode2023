@@ -10,12 +10,9 @@ class Program
     {
         var simulation = new HailSimulation();
         simulation.Solve1("dummydata", 7, 27).Should().Be(2);
-        
         simulation.Solve1("data", 200000000000000, 400000000000000);
         simulation.Solve2("dummydata").Should().Be(47);
-        simulation.Solve2("data"); // 684215033135104 is too high
-                                          // 684195454124032 is too high
-                                          // 684195261186048 is wrong
+        simulation.Solve2("data");
     }
 }
 
@@ -45,31 +42,12 @@ class HailSimulation
     public long Solve2(string fileName)
     {
         var hailStones = ReadInput(fileName);
-        // Setting up a system of equations -> hyperplane
-        // hailstone position at time t=initial_position+t×velocity
-        // We use Cramer's rule, where determinants are used to solve for the six unknowns:
-        // x,y,z,vx,vy,vz
         
-        // The rock's position at time t_i
-        // must equal the i^th
-        // hailstone's position at that time. This gives us three linear equations for each hailstone:
-        // x + t_i * vx = px_i + t_i * vx_i --> x = px_i + t_i * (vx_i - vx)
-        // y + t_i * vy = py_i + t_i * vy_i --> y = py_i + t_i * (vy_i - vy)
-        // z + t_i * vz = pz_i + t_i * vz_i --> z = pz_i + t_i * (vz_i - vz)
-        // Substitute t = x - x_i / (vx_i - vx)
-        // The system is overdetermined -> we only need two equations. Eliminate z
-        // x + t_i * vx = px_i + t_i * vx_i --> x = px_i + t_i * (vx_i - vx)
-        // y + t_i * vy = py_i + t_i * vy_i --> y = py_i + t_i * (vy_i - vy)
-        // This means we have to add 3 hailstones to solve this system of 3 unknowns
-        
-        // Ax = B where x = (x,y,z,v_x,v_y,v_z)
-        
-        List<(long x, long y, long z)> finalPositions = new();
         List<long> finalSums = new();
         for (var idx = 0; idx != hailStones.Count - 2; idx++)
         {
-            // Running this algorithm once should be sufficient...
-            // However the answers differ based on which hailstones are taken due to rounding errors. Take the most occurring value!
+            // Running this algorithm once should suffice...
+            // However the answers differ based on which hailstones are taken due to rounding errors.
             var h1 = hailStones[idx]; var h2 = hailStones[idx + 1]; var h3 = hailStones[idx + 2];
 
             var A = DenseMatrix.OfArray(new double[,]
@@ -101,6 +79,7 @@ class HailSimulation
             finalSums.Add(roundedValues.Sum());
         }
 
+        // Take the most occurring value in the list!
         var mostOccurringItem = finalSums
             .GroupBy(x => x).MaxBy(g => g.Count());
         
