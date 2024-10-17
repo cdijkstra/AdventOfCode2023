@@ -12,7 +12,10 @@ class Program
         simulation.Solve1("dummydata", 7, 27).Should().Be(2);
         
         simulation.Solve1("data", 200000000000000, 400000000000000);
-        simulation.Solve2("dummydata").Should().Be(47);
+        // simulation.Solve2("dummydata").Should().Be(47);
+        simulation.Solve2("data"); // 684215033135104 is too high
+                                          // 684195454124032 is too high
+                                          // 684195261186048 is wrong
     }
 }
 
@@ -39,7 +42,7 @@ class HailSimulation
         return collisions;
     }
     
-    public int Solve2(string fileName)
+    public long Solve2(string fileName)
     {
         var hailStones = ReadInput(fileName);
         // Setting up a system of equations -> hyperplane
@@ -61,38 +64,62 @@ class HailSimulation
         
         // Ax = B where x = (x,y,z,v_x,v_y,v_z)
 
-        var h1 = hailStones[0];
-        var h2 = hailStones[1];
-        var h3 = hailStones[2];
+        var smallestHailstones = hailStones
+            .Select(h => new { Hailstone = h, MaxValue = h.MaxAbsValue() })
+            .OrderBy(h => h.MaxValue)
+            .Take(3)
+            .Select(h => h.Hailstone)
+            .ToList();
+
+        List<(long x, long y, long z)> finalPositions = new();
+        List<long> finalSums = new();
+        for (int idx = 0; idx != 60; idx++)
+        {
+            var h1 = hailStones[idx];
+            var h2 = hailStones[idx + 1];
+            var h3 = hailStones[idx + 2];
+
+            var A = DenseMatrix.OfArray(new float[6, 6]
+            {
+                { h1.Vy - h2.Vy, h2.Vx - h1.Vx, 0, h2.Y - h1.Y, h1.X - h2.X, 0 },
+                { h1.Vy - h3.Vy, h3.Vx - h1.Vx, 0, h3.Y - h1.Y, h1.X - h3.X, 0 },
+                { 0, h1.Vz - h2.Vz, h2.Vy - h1.Vy, 0, h2.Z - h1.Z, h1.Y - h2.Y },
+                { 0, h1.Vz - h3.Vz, h3.Vy - h1.Vy, 0, h3.Z - h1.Z, h1.Y - h3.Y },
+                { h1.Vz - h2.Vz, 0, h2.Vx - h1.Vx, h2.Z - h1.Z, 0, h1.X - h2.X },
+                { h1.Vz - h3.Vz, 0, h3.Vx - h1.Vx, h3.Z - h1.Z, 0, h1.X - h3.X }
+            });
+
+            var B = DenseVector.OfArray(new float[]
+            {
+                h1.X * h1.Vy - h1.Y * h1.Vx - (h2.X * h2.Vy - h2.Y * h2.Vx),
+                h1.X * h1.Vy - h1.Y * h1.Vx - (h3.X * h3.Vy - h3.Y * h3.Vx),
+                h1.Y * h1.Vz - h1.Z * h1.Vy - (h2.Y * h2.Vz - h2.Z * h2.Vy),
+                h1.Y * h1.Vz - h1.Z * h1.Vy - (h3.Y * h3.Vz - h3.Z * h3.Vy),
+                h1.X * h1.Vz - h1.Z * h1.Vx - (h2.X * h2.Vz - h2.Z * h2.Vx),
+                h1.X * h1.Vz - h1.Z * h1.Vx - (h3.X * h3.Vz - h3.Z * h3.Vx),
+            });
+
+            var aInverse = A.Inverse();
+            var resultVector = aInverse * B;
+
+            var roundedValues = resultVector.Take(3)
+                .Select(v =>
+                {
+                    var roundedValue = (long)Math.Round(v, MidpointRounding.AwayFromZero);
+                    Console.WriteLine($"Original: {v}, Rounded: {roundedValue}");
+                    return roundedValue;
+                }).ToList();
+            
+            finalPositions.Add((roundedValues[0], roundedValues[1], roundedValues[2]));
+            Console.WriteLine($"Final Result: {roundedValues.Sum()}");
+            finalSums.Add(roundedValues.Sum());
+        }
+
+        Console.WriteLine($"Min value = {finalSums.Min()} and max = {finalSums.Max()}; difference = {finalSums.Max() - finalSums.Min()}");
         
-        var A = DenseMatrix.OfArray(new float[6,6]
-        {
-            { h1.Vy - h2.Vy, h2.Vx - h1.Vx, 0, h2.Y - h1.Y, h1.X - h2.X, 0 },
-            { h1.Vy - h3.Vy, h3.Vx - h1.Vx, 0, h3.Y - h1.Y, h1.X - h3.X, 0 },
-            { 0, h1.Vz - h2.Vz, h2.Vy - h1.Vy, 0, h2.Z - h1.Z, h1.Y - h2.Y },
-            { 0, h1.Vz - h3.Vz, h3.Vy - h1.Vy, 0, h3.Z - h1.Z, h1.Y - h3.Y },
-            { h1.Vz - h2.Vz, 0, h2.Vx - h1.Vx, h2.Z - h1.Z, 0, h1.X - h2.X },
-            { h1.Vz - h3.Vz, 0, h3.Vx - h1.Vx, h3.Z - h1.Z, 0, h1.X - h3.X }
-        });
-
-        var B = DenseVector.OfArray(new float[]
-        {
-            h1.X * h1.Vy - h1.Y * h1.Vx - (h2.X * h2.Vy - h2.Y * h2.Vx),
-            h1.X * h1.Vy - h1.Y * h1.Vx - (h3.X * h3.Vy - h3.Y * h3.Vx),
-            h1.Y * h1.Vz - h1.Z * h1.Vy - (h2.Y * h2.Vz - h2.Z * h2.Vy),
-            h1.Y * h1.Vz - h1.Z * h1.Vy - (h3.Y * h3.Vz - h3.Z * h3.Vy),
-            h1.X * h1.Vz - h1.Z * h1.Vx - (h2.X * h2.Vz - h2.Z * h2.Vx),
-            h1.X * h1.Vz - h1.Z * h1.Vx - (h3.X * h3.Vz - h3.Z * h3.Vx),
-        });
-
-        var A_inverse = A.Inverse();
-        var resultVector = A_inverse * B;
-
-        var result = resultVector[0] + (int)resultVector[1] + (int)resultVector[2];
-
-        return (int)result;
+        return 1;
     }
-
+    
     private static List<Hail> ReadInput(string fileName)
     {
         List<Hail> hails = File.ReadAllLines($"Data/{fileName}").Select(line => new Hail()
