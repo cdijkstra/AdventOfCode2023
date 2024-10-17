@@ -1,7 +1,5 @@
 ﻿using FluentAssertions;
-using MathNet.Numerics.LinearAlgebra;
-using MathNet.Numerics.RootFinding;
-using MathNet.Symbolics;
+using MathNet.Numerics.LinearAlgebra.Single;
 using Expr = MathNet.Symbolics.Expression;
 
 namespace HailStones;
@@ -14,7 +12,7 @@ class Program
         simulation.Solve1("dummydata", 7, 27).Should().Be(2);
         
         simulation.Solve1("data", 200000000000000, 400000000000000);
-        simulation.Solve2("dummydata");
+        simulation.Solve2("dummydata").Should().Be(47);
     }
 }
 
@@ -44,38 +42,55 @@ class HailSimulation
     public int Solve2(string fileName)
     {
         var hailStones = ReadInput(fileName);
+        // Setting up a system of equations -> hyperplane
+        // hailstone position at time t=initial_position+t×velocity
+        // We use Cramer's rule, where determinants are used to solve for the six unknowns:
+        // x,y,z,vx,vy,vz
         
-        var initialGuess = new double[] { 0, 0, 0, 0, 0, 0 }; // x,y,z,vx,vy,vz
+        // The rock's position at time t_i
+        // must equal the i^th
+        // hailstone's position at that time. This gives us three linear equations for each hailstone:
+        // x + t_i * vx = px_i + t_i * vx_i --> x = px_i + t_i * (vx_i - vx)
+        // y + t_i * vy = py_i + t_i * vy_i --> y = py_i + t_i * (vy_i - vy)
+        // z + t_i * vz = pz_i + t_i * vz_i --> z = pz_i + t_i * (vz_i - vz)
+        // Substitute t = x - x_i / (vx_i - vx)
+        // The system is overdetermined -> we only need two equations. Eliminate z
+        // x + t_i * vx = px_i + t_i * vx_i --> x = px_i + t_i * (vx_i - vx)
+        // y + t_i * vy = py_i + t_i * vy_i --> y = py_i + t_i * (vy_i - vy)
+        // This means we have to add 3 hailstones to solve this system of 3 unknowns
         
-        // Function to evaluate the system of equations numerically
-        Func<double[], double[]> function = variables =>
+        // Ax = B where x = (x,y,z,v_x,v_y,v_z)
+
+        var h1 = hailStones[0];
+        var h2 = hailStones[1];
+        var h3 = hailStones[2];
+        
+        var A = DenseMatrix.OfArray(new float[6,6]
         {
-            double xr = variables[0];
-            double yr = variables[1];
-            double zr = variables[2];
-            double vxr = variables[3];
-            double vyr = variables[4];
-            double vzr = variables[5];
-    
-            var amountOfHailStonesToConsider = 3;
-            var results = new double[2 * amountOfHailStonesToConsider];
-            int index = 0;
-    
-            foreach (var hailStone in hailStones[..amountOfHailStonesToConsider])
-            {
-                results[index++] = (xr - hailStone.X) * (hailStone.Vy - vyr) - (yr - hailStone.Y) * (hailStone.Vx - vxr);
-                results[index++] = (yr - hailStone.Y) * (hailStone.Vz - vzr) - (zr - hailStone.Z) * (hailStone.Vy - vyr);
-            }
-    
-            return results;
-        };
-        // Solve the equations
-        
-        double tolerance = 1e-6;
-        int maxIterations = 100;
-        
-        var result = Broyden.FindRoot(function, initialGuess, tolerance, maxIterations);
-        return (int)result[0];
+            { h1.Vy - h2.Vy, h2.Vx - h1.Vx, 0, h2.Y - h1.Y, h1.X - h2.X, 0 },
+            { h1.Vy - h3.Vy, h3.Vx - h1.Vx, 0, h3.Y - h1.Y, h1.X - h3.X, 0 },
+            { 0, h1.Vz - h2.Vz, h2.Vy - h1.Vy, 0, h2.Z - h1.Z, h1.Y - h2.Y },
+            { 0, h1.Vz - h3.Vz, h3.Vy - h1.Vy, 0, h3.Z - h1.Z, h1.Y - h3.Y },
+            { h1.Vz - h2.Vz, 0, h2.Vx - h1.Vx, h2.Z - h1.Z, 0, h1.X - h2.X },
+            { h1.Vz - h3.Vz, 0, h3.Vx - h1.Vx, h3.Z - h1.Z, 0, h1.X - h3.X }
+        });
+
+        var B = DenseVector.OfArray(new float[]
+        {
+            h1.X * h1.Vy - h1.Y * h1.Vx - (h2.X * h2.Vy - h2.Y * h2.Vx),
+            h1.X * h1.Vy - h1.Y * h1.Vx - (h3.X * h3.Vy - h3.Y * h3.Vx),
+            h1.Y * h1.Vz - h1.Z * h1.Vy - (h2.Y * h2.Vz - h2.Z * h2.Vy),
+            h1.Y * h1.Vz - h1.Z * h1.Vy - (h3.Y * h3.Vz - h3.Z * h3.Vy),
+            h1.X * h1.Vz - h1.Z * h1.Vx - (h2.X * h2.Vz - h2.Z * h2.Vx),
+            h1.X * h1.Vz - h1.Z * h1.Vx - (h3.X * h3.Vz - h3.Z * h3.Vx),
+        });
+
+        var A_inverse = A.Inverse();
+        var resultVector = A_inverse * B;
+
+        var result = resultVector[0] + (int)resultVector[1] + (int)resultVector[2];
+
+        return (int)result;
     }
 
     private static List<Hail> ReadInput(string fileName)
