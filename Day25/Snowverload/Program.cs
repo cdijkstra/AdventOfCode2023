@@ -7,18 +7,16 @@ class Program
     static void Main(string[] args)
     {
         var snowVerload = new SnowverLoad();
-        // snowVerload.Solve1("dummydata").Should().Be(54);
-        var ans = snowVerload.Solve1("data");
-        Console.WriteLine(ans);
-        
-        // 22920 is too low
+        snowVerload.Solve1("dummydata").Should().Be(54);
+        // var ans = snowVerload.Solve1("data");
+        // Console.WriteLine(ans);
     }
 
     class SnowverLoad()
     {
         private HashSet<string> _nodes = new();
         private Dictionary<string, List<string>> _graph = new();
-        
+        private List<(string, string)> _edges = new();
         public int Solve1(string fileName)
         {
             foreach (var line in File.ReadLines($"Data/{fileName}"))
@@ -31,25 +29,21 @@ class Program
                 // And add the graph
                 _graph.Add(lhs, rhs);
             }
-
-            List<int> sizes = new();
+            
+            _edges = GetEdges();
             
             // Now cut wires, where GetCombination() finds all possible KV combinations that are cut
             foreach (var combo in GetCombinations())
             {
                 // Create a deep copy of _graph
-                var newGraph = _graph.ToDictionary(
-                    entry => entry.Key,                    // Copy the key as-is
-                    entry => new List<string>(entry.Value) // Create a new list from the value (deep copy)
-                );
-                // Remove the three values
+                var newGraph = CopyGraph(_graph);
                 combo.ForEach(kvPair => newGraph[kvPair.key].Remove(kvPair.value));
 
                 // Now remove any keys without values
-                var keysToRemove = newGraph
-                    .Where(entry => entry.Value.Count == 0)
-                    .Select(entry => entry.Key).ToList();
-                keysToRemove.ForEach(key => newGraph.Remove(key));
+                foreach (var entry in newGraph.ToList().Where(entry => entry.Value.Count == 0))
+                {
+                    newGraph.Remove(entry.Key);
+                }
                 
                 // Now calculate the total size of the total graph.
                 var firstEntry = newGraph.Keys.ToArray()[0];
@@ -78,37 +72,53 @@ class Program
                 var size1 = visited.Count;
                 var size2 = maxSize - size1;
                 var totalSize = size1 * size2;
-                if (totalSize != 0)
-                {
-                    return totalSize;
-                }
+                if (totalSize == 0) continue;
+                
+                return totalSize;
             }
 
             return 0;
         }
         
-        private IEnumerable<List<(string key, string value)>> GetCombinations()
+        private List<(string, string)> GetEdges()
         {
-            // Create a list of (key, value) pairs from the dictionary
-            var valuePairs = new List<(string key, string value)>();
+            var edges = new List<(string, string)>();
+            var seenEdges = new HashSet<(string, string)>();
 
             foreach (var kvp in _graph)
             {
-                foreach (var value in kvp.Value)
+                foreach (var neighbor in kvp.Value)
                 {
-                    valuePairs.Add((kvp.Key, value));
+                    // Ensure we don't duplicate edges in the undirected graph
+                    if (seenEdges.Contains((neighbor, kvp.Key))) continue;
+                    edges.Add((kvp.Key, neighbor));
+                    seenEdges.Add((kvp.Key, neighbor));
                 }
             }
-
-            for (var i = 0; i < valuePairs.Count; i++)
+            return edges;
+        }
+        
+        private Dictionary<string, List<string>> CopyGraph(Dictionary<string, List<string>> graph)
+        {
+            var newGraph = new Dictionary<string, List<string>>();
+            foreach (var kvp in graph)
             {
-                for (var j = i + 1; j < valuePairs.Count; j++)
+                newGraph[kvp.Key] = new List<string>(kvp.Value);
+            }
+            return newGraph;
+        }
+        
+        private IEnumerable<List<(string key, string value)>> GetCombinations()
+        {
+            for (var i = 0; i < _edges.Count; i++)
+            {
+                for (var j = i + 1; j < _edges.Count; j++)
                 {
-                    for (var k = j + 1; k < valuePairs.Count; k++)
+                    for (var k = j + 1; k < _edges.Count; k++)
                     {
                         yield return new List<(string key, string value)>
                         {
-                            valuePairs[i], valuePairs[j], valuePairs[k]
+                            _edges[i], _edges[j], _edges[k]
                         };
                     }
                 }                
@@ -141,3 +151,5 @@ class Program
         }
     }
 }
+
+
