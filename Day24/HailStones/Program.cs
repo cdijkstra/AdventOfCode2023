@@ -12,7 +12,7 @@ class Program
         simulation.Solve1("dummydata", 7, 27).Should().Be(2);
         simulation.Solve1("data", 200000000000000, 400000000000000);
         simulation.Solve2("dummydata").Should().Be(47);
-        simulation.Solve2("data");
+        Console.WriteLine(simulation.Solve2("data"));
     }
 }
 
@@ -74,16 +74,16 @@ class HailSimulation
             var resultVector = aInverse * B;
 
             var roundedValues = resultVector.Take(3)
-                .Select(v => (long)Math.Round(v, MidpointRounding.AwayFromZero)).ToList();
+                .Select(v => (long)Math.Round(v)).ToList();
             
             finalSums.Add(roundedValues.Sum());
         }
 
         // Take the most occurring value in the list!
         var mostOccurringItem = finalSums
-            .GroupBy(x => x).MaxBy(g => g.Count());
+            .GroupBy(x => x).MaxBy(g => g.Count())!.Key;
         
-        return mostOccurringItem!.Key;
+        return mostOccurringItem;
     }
     
     private static List<Hail> ReadInput(string fileName)
