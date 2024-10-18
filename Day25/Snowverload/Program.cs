@@ -11,144 +11,212 @@ class Program
         // var ans = snowVerload.Solve1("data");
         // Console.WriteLine(ans);
     }
+    
+    public readonly record struct Edge(string from, string to);
 
     class SnowverLoad()
     {
         private HashSet<string> _nodes = new();
         private Dictionary<string, List<string>> _graph = new();
-        private List<(string, string)> _edges = new();
+        private List<Edge> _edges = new();
+        static Random rand = new();
+
         public int Solve1(string fileName)
         {
+            var crossings = 3;
+            
             foreach (var line in File.ReadLines($"Data/{fileName}"))
             {
                 var lhs = line.Split(':')[0];
                 var rhs = line.Split(':')[1].Split().Skip(1).ToList();
                 _nodes.Add(lhs);
                 rhs.ForEach(entry => _nodes.Add(entry));
-                
+
                 // And add the graph
                 _graph.Add(lhs, rhs);
             }
             
+            var noCrossings = 500;
             _edges = GetEdges();
-            
-            // Now cut wires, where GetCombination() finds all possible KV combinations that are cut
-            foreach (var combo in GetCombinations())
+            Dictionary<Edge, int> crossingCounts =  _edges.ToDictionary(edge => edge, edge => 0);
+
+            for (int i = 0; i < noCrossings; i++)
             {
-                // Create a deep copy of _graph
-                var newGraph = CopyGraph(_graph);
-                combo.ForEach(kvPair => newGraph[kvPair.key].Remove(kvPair.value));
-
-                // Now remove any keys without values
-                foreach (var entry in newGraph.ToList().Where(entry => entry.Value.Count == 0))
+                var node1 = _graph.Keys.ToList()[rand.Next(_graph.Count)];
+                var node2 = _graph.Keys.Where(key => key != node1).ToArray()[rand.Next(_graph.Count - 1)];
+                var path = ShortestPath(node1, node2);
+                for (var p = 1; p < path.Count; p++)
                 {
-                    newGraph.Remove(entry.Key);
+                    // Find out which edges were most used
+                    var from = path[p - 1];
+                    var to = path[p];
+                    var edge = _edges.Single(ed =>
+                        (ed.from == from && ed.to == to) || (ed.from == to && ed.to == from));
+
+                    crossingCounts[edge]++;
                 }
-                
-                // Now calculate the total size of the total graph.
-                var firstEntry = newGraph.Keys.ToArray()[0];
-                Queue<string> toVisit = new();
-                toVisit.Enqueue(firstEntry);
-                HashSet<string> visited = new();
-
-                while (toVisit.Count > 0)
-                {
-                    var node = toVisit.Dequeue();
-                    visited.Add(node);
-                    
-                    var connectedNodes = newGraph // Find keys of occurrence of node at RHS
-                        .Where(kvp => kvp.Value.Contains(node))
-                        .Select(kvp => kvp.Key).ToList()
-                        .Concat(newGraph.GetValueOrDefault(node, new List<string>())); // Append values at RHS if key occurs
-
-                    // We have now found all nodes we can traverse to from the current node,
-                    // but still have to exclude those places we've already been
-                    var validConnectedNodes = connectedNodes.Where(n => !visited.Contains(n)).ToList();
-                    
-                    validConnectedNodes.ForEach(newNode => toVisit.Enqueue(newNode));
-                }
-
-                var maxSize = FindUniqueStrings(newGraph);
-                var size1 = visited.Count;
-                var size2 = maxSize - size1;
-                var totalSize = size1 * size2;
-                if (totalSize == 0) continue;
-                
-                return totalSize;
             }
 
-            return 0;
+            var topK = crossingCounts.OrderByDescending(kvp => kvp.Value).Take(crossings).ToList();
+            // This works
+            
+            //remove the 3 edges that we are guessing make the min cut
+            var g2 = _graph.ToDictionary(KeyValuePair => KeyValuePair.Key, KeyValuePair => KeyValuePair.Value.ToList());
+            for (int i = 0; i < crossings; i++)
+            {
+                if (g2.ContainsKey(topK[i].Key.from) && g2[topK[i].Key.from].Contains(topK[i].Key.to))
+                {
+                    g2[topK[i].Key.from].Remove(topK[i].Key.to);
+                }
+                else if (g2.ContainsKey(topK[i].Key.to) && g2[topK[i].Key.to].Contains(topK[i].Key.from))
+                {
+                    g2[topK[i].Key.to].Remove(topK[i].Key.from);
+                }
+            }
+
+            var size1 = FindLongestPath(g2.First().Key, g2);
+            // Use a HashSet to store distinct strings
+            var distinctStrings = new HashSet<string>();
+
+            // Add all keys to the HashSet
+            foreach (var key in g2.Keys)
+            {
+                distinctStrings.Add(key);
+            }
+
+            // Add all values to the HashSet
+            foreach (var valueList in g2.Values)
+            {
+                foreach (var value in valueList)
+                {
+                    distinctStrings.Add(value);
+                }
+            }
+
+            // The total count of distinct strings
+            int totalDistinctCount = distinctStrings.Count;
+            var size2 = totalDistinctCount - size1;
+            
+            return size1 * size2;
         }
         
-        private List<(string, string)> GetEdges()
+        private List<string> ShortestPath(string start, string end)
         {
-            var edges = new List<(string, string)>();
-            var seenEdges = new HashSet<(string, string)>();
+            var visited = new HashSet<string>();
+            var queue = new Queue<(string, List<string>)>();
+            visited.Add(start);
+            queue.Enqueue((start, new List<string> { start} ));
+            while (queue.Any())
+            {
+                (var curr, var route) = queue.Dequeue();
+                if (curr == end)
+                {
+                    return route;
+                }
+
+                var linkedNodes = _graph
+                    .Where(kvp => kvp.Value.Contains(curr))
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                if (_graph.TryGetValue(curr, out var value))
+                {
+                    linkedNodes.AddRange(value);
+                }
+                
+                foreach (var linkedNode in linkedNodes)
+                {
+                    if (visited.Contains(linkedNode))
+                        continue;
+
+                    visited.Add(linkedNode);
+                    var newRoute = route.ToList();
+                    newRoute.Add(linkedNode);
+                    queue.Enqueue((linkedNode, newRoute));
+                }
+            }
+            return null;
+        }
+        
+        private int FindLongestPath(string start, Dictionary<string, List<string>> graph)
+        {
+            var visited = new HashSet<string>();
+            var queue = new Queue<string>();
+            visited.Add(start);
+            queue.Enqueue(start);
+            while (queue.Any())
+            {
+                var curr = queue.Dequeue();
+
+                var linkedNodes = graph
+                    .Where(kvp => kvp.Value.Contains(curr))
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                if (_graph.TryGetValue(curr, out var value))
+                {
+                    linkedNodes.AddRange(value);
+                }
+                
+                foreach (var linkedNode in linkedNodes)
+                {
+                    if (visited.Contains(linkedNode))
+                        continue;
+
+                    visited.Add(linkedNode);
+                    queue.Enqueue(linkedNode);
+                }
+            }
+            return visited.Count;
+        }
+        
+        private List<Edge> GetEdges()
+        {
+            var edges = new List<Edge>();
+            var seenEdges = new HashSet<Edge>();
 
             foreach (var kvp in _graph)
             {
                 foreach (var neighbor in kvp.Value)
                 {
                     // Ensure we don't duplicate edges in the undirected graph
-                    if (seenEdges.Contains((neighbor, kvp.Key))) continue;
-                    edges.Add((kvp.Key, neighbor));
-                    seenEdges.Add((kvp.Key, neighbor));
+                    if (seenEdges.Contains(new(neighbor, kvp.Key))) continue;
+                    edges.Add(new(kvp.Key, neighbor));
+                    seenEdges.Add(new(kvp.Key, neighbor));
                 }
             }
             return edges;
         }
         
-        private Dictionary<string, List<string>> CopyGraph(Dictionary<string, List<string>> graph)
-        {
-            var newGraph = new Dictionary<string, List<string>>();
-            foreach (var kvp in graph)
-            {
-                newGraph[kvp.Key] = new List<string>(kvp.Value);
-            }
-            return newGraph;
-        }
-        
-        private IEnumerable<List<(string key, string value)>> GetCombinations()
-        {
-            for (var i = 0; i < _edges.Count; i++)
-            {
-                for (var j = i + 1; j < _edges.Count; j++)
-                {
-                    for (var k = j + 1; k < _edges.Count; k++)
-                    {
-                        yield return new List<(string key, string value)>
-                        {
-                            _edges[i], _edges[j], _edges[k]
-                        };
-                    }
-                }                
-            }
-            
-        }
-        
-        public static int FindUniqueStrings(Dictionary<string, List<string>> dict)
-        {
-            // Use a HashSet to store unique strings
-            HashSet<string> uniqueStrings = new HashSet<string>();
-
-            // Add all keys to the HashSet (keys are unique by default)
-            foreach (var key in dict.Keys)
-            {
-                uniqueStrings.Add(key);
-            }
-
-            // Add all values from the value lists to the HashSet
-            foreach (var valueList in dict.Values)
-            {
-                foreach (var value in valueList)
-                {
-                    uniqueStrings.Add(value);  // Add each value to the HashSet
-                }
-            }
-
-            // The count of unique strings is the size of the HashSet
-            return uniqueStrings.Count;
-        }
+        // static List<int> shortestPathExcludingEdges(Dictionary<int, List<int>> graph, int start, int end, Dictionary<Edge, int> without)
+        // {
+        //     var visited = new HashSet<int>();
+        //     var queue = new Queue<(int, List<int>)>();
+        //     visited.Add(start);
+        //     queue.Enqueue((start, [start]));
+        //     while (queue.Any())
+        //     {
+        //         (var curr, var route) = queue.Dequeue();
+        //         if (curr == end)
+        //             return route;
+        //
+        //         foreach (var edge in graph[curr])
+        //         {
+        //             var newEdge = curr < edge ? new Edge(curr, edge) : new Edge(edge, curr);
+        //             if (without.ContainsKey(newEdge))
+        //                 continue;
+        //
+        //             if (visited.Contains(edge))
+        //                 continue;
+        //
+        //             visited.Add(edge);
+        //             var newRoute = route.ToList();
+        //             newRoute.Add(edge);
+        //             queue.Enqueue((edge, newRoute));
+        //         }
+        //     }
+        //     return null;
+        // }
     }
 }
 
