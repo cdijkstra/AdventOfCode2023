@@ -145,6 +145,9 @@ class Program
         
         private int DFS(string node, HashSet<string> visited)
         {
+            var group1 = new List<string>() { "cmg", "frs", "lhk", "lsr", "nvd", "pzl", "qnr", "rsh", "rzs" };
+            var group2 = new List<string>() { "bvb", "hfx", "jqt", "ntq", "rhn", "xhk" };
+            
             // Mark the current node as visited
             visited.Add(node);
             int size = 1; // Count the current node
