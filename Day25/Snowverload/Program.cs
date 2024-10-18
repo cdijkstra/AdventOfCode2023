@@ -61,31 +61,36 @@ class Program
             // This works
             
             //remove the 3 edges that we are guessing make the min cut
-            var g2 = _graph.ToDictionary(KeyValuePair => KeyValuePair.Key, KeyValuePair => KeyValuePair.Value.ToList());
+            _graph.ToDictionary(KeyValuePair => KeyValuePair.Key, KeyValuePair => KeyValuePair.Value.ToList());
             for (int i = 0; i < crossings; i++)
             {
-                if (g2.ContainsKey(topK[i].Key.from) && g2[topK[i].Key.from].Contains(topK[i].Key.to))
+                if (_graph.ContainsKey(topK[i].Key.from) && _graph[topK[i].Key.from].Contains(topK[i].Key.to))
                 {
-                    g2[topK[i].Key.from].Remove(topK[i].Key.to);
+                    _graph[topK[i].Key.from].Remove(topK[i].Key.to);
                 }
-                else if (g2.ContainsKey(topK[i].Key.to) && g2[topK[i].Key.to].Contains(topK[i].Key.from))
+                else if (_graph.ContainsKey(topK[i].Key.to) && _graph[topK[i].Key.to].Contains(topK[i].Key.from))
                 {
-                    g2[topK[i].Key.to].Remove(topK[i].Key.from);
+                    _graph[topK[i].Key.to].Remove(topK[i].Key.from);
                 }
             }
 
-            var size1 = FindLongestPath(g2.First().Key, g2);
+            // var size1 = FindLongestPath(g2.First().Key, g2);
+            
+            var visited = new HashSet<string>();
+            var size1 = DFS(_graph.First().Key, visited);
+            
+            
             // Use a HashSet to store distinct strings
             var distinctStrings = new HashSet<string>();
 
             // Add all keys to the HashSet
-            foreach (var key in g2.Keys)
+            foreach (var key in _graph.Keys)
             {
                 distinctStrings.Add(key);
             }
 
             // Add all values to the HashSet
-            foreach (var valueList in g2.Values)
+            foreach (var valueList in _graph.Values)
             {
                 foreach (var value in valueList)
                 {
@@ -136,6 +141,43 @@ class Program
                 }
             }
             return null;
+        }
+        
+        private int DFS(string node, HashSet<string> visited)
+        {
+            // Mark the current node as visited
+            visited.Add(node);
+            int size = 1; // Count the current node
+
+            // Explore each neighbor
+            var neighbors = new HashSet<string>();
+
+            // Add neighbors from the current node
+            if (_graph.TryGetValue(node, out var neighborsRHS))
+            {
+                foreach (var neighbor in neighborsRHS)
+                {
+                    neighbors.Add(neighbor);
+                }
+            }
+
+            // Add the current node as a neighbor for the nodes where it appears on the right side (values)
+            foreach (var kvp in _graph.Where(kvp => kvp.Value.Contains(node)))
+            {
+                neighbors.Add(kvp.Key);
+            }
+            
+            foreach (var neighbor in neighbors)
+            {
+                // Visit unvisited neighbors only
+                if (!visited.Contains(neighbor))
+                {
+                    // Recursively get the size of the group
+                    size += DFS(neighbor, visited);
+                }
+            }
+
+            return size; // Return the size of the group
         }
         
         private int FindLongestPath(string start, Dictionary<string, List<string>> graph)
